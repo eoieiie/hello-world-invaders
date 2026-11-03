@@ -22,8 +22,8 @@ concurrency:
 
 jobs:
   jar:
-    # Only in our fork. Upstream would otherwise publish its own releases.
-    if: github.repository == 'eoieiie/Invaders-SDP-23621'
+    # Only in the team repository, not in personal forks.
+    if: github.repository == 'eoieiie/hello-world-invaders'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

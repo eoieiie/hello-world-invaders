@@ -5,7 +5,7 @@ name: PR title
 #   format:  type: subject   or   type(scope): subject
 #   types:   feat fix docs refactor test ci chore style
 # A wrong format fails the check. A title over 50 characters only warns.
-# Runs only in our fork, so other teams' upstream PRs are not checked.
+# Runs only in the team repository.
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ on:
 
 jobs:
   title:
-    if: github.repository == 'eoieiie/Invaders-SDP-23621'
+    if: github.repository == 'eoieiie/hello-world-invaders'
     runs-on: ubuntu-latest
     steps:
       - name: Check title

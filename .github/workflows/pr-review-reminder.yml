@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   remind:
-    if: github.repository == 'eoieiie/Invaders-SDP-23621'
+    if: github.repository == 'eoieiie/hello-world-invaders'
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -29,7 +29,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
-            if (owner + "/" + repo !== "eoieiie/Invaders-SDP-23621") return;
+            if (owner + "/" + repo !== "eoieiie/hello-world-invaders") return;
 
             const hours = Number(process.env.WAIT_HOURS);
             if (!Number.isFinite(hours) || hours <= 0) {
