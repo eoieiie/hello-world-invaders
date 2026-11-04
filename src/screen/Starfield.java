@@ -33,9 +33,9 @@ public class Starfield {
 		}
 	}
 
-	/** Centre of the screen, where stars come from. */
+	/** Horizontal centre of the screen, where stars come from. */
 	private final int centerX;
-	/** Centre of the screen, where stars come from. */
+	/** Vertical centre of the screen, where stars come from. */
 	private final int centerY;
 	/** Screen width, to tell when a star has left the screen. */
 	private final int width;
@@ -52,6 +52,8 @@ public class Starfield {
 
 	/**
 	 * Scatters the stars at random depths so the screen is full at once.
+	 * A star that would start outside the screen is placed again until it
+	 * is on screen.
 	 *
 	 * @param width
 	 *            Screen width.
@@ -69,9 +71,11 @@ public class Starfield {
 		this.depth = new float[STAR_COUNT];
 
 		for (int i = 0; i < STAR_COUNT; i++) {
-			placeFar(i);
-			this.depth[i] = MIN_DEPTH
-					+ this.random.nextFloat() * (MAX_DEPTH - MIN_DEPTH);
+			do {
+				placeFar(i);
+				this.depth[i] = MIN_DEPTH
+						+ this.random.nextFloat() * (MAX_DEPTH - MIN_DEPTH);
+			} while (isOffScreen(i));
 		}
 	}
 
