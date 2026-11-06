@@ -498,7 +498,7 @@ public class ShopScreen extends Screen {
 		drawDetail();
 		drawMessage();
 		this.drawManager.drawKeyHints(this,
-				"arrows/click select | C coins | V diamonds | esc back");
+				"arrows/click select, c coins, v diamonds, esc back");
 		this.drawManager.completeDrawing(this);
 	}
 
