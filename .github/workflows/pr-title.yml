@@ -29,3 +29,17 @@ jobs:
             echo "::warning title=PR title length::${#TITLE} characters. Try to keep it under 50, since it becomes the commit title on main."
           fi
           echo "OK: $TITLE"
+
+      - name: Check Jira link
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          key_pattern='(^|[^[:alnum:]_])HW-[0-9]+([^[:alnum:]_]|$)'
+          if ! [[ "$PR_BODY" =~ $key_pattern ]]; then
+            echo '::error::Add the uppercase Jira key (HW-123) to the PR description.'
+            exit 1
+          fi
+          if ! [[ "$BRANCH" =~ ^hello-world/HW-[0-9]+-[a-z0-9-]+$ ]]; then
+            echo '::warning::Use hello-world/HW-123-short-name for new branches.'
+          fi
