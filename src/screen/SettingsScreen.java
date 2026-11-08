@@ -70,6 +70,7 @@ public class SettingsScreen extends Screen {
 	 */
 	public final int run() {
 		super.run();
+		this.soundManager.saveSettings();
 		return this.returnCode;
 	}
 
