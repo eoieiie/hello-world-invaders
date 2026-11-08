@@ -234,6 +234,7 @@ public final class SoundSettingsTest {
             record(manager);
             SettingsScreen settings = screen();
             call(settings, "adjustSelectedVolume", new Class<?>[]{int.class}, 10);
+            // At 448x520: left=89, width=268; SFX 25% is (89+268/4, 520/3+80).
             field(Core.getInputManager().getClass(), "mouseX").set(Core.getInputManager(), 156);
             field(Core.getInputManager().getClass(), "mouseY").set(Core.getInputManager(), 253);
             call(settings, "updateMouseVolume", new Class<?>[]{boolean.class}, true);

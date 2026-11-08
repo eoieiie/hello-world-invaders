@@ -162,6 +162,8 @@ public final class SoundManager {
 
 	/**
 	 * Sets the volume of one category.
+	 * Runtime adjustments clamp finite values at the control boundaries;
+	 * invalid saved values instead use defaults to recover corrupt settings.
 	 *
 	 * @param category
 	 *            Category to adjust.
