@@ -1,6 +1,5 @@
 package screen;
 
-import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.List;
 
@@ -13,7 +12,7 @@ import engine.Score;
  * @author <a href="mailto:RobertoIA1987@gmail.com">Roberto Izquierdo Amo</a>
  * 
  */
-public class HighScoreScreen extends Screen {
+public class HighScoreScreen extends MenuScreen {
 
 	/** List of past high scores. */
 	private List<Score> highScores;
@@ -31,8 +30,6 @@ public class HighScoreScreen extends Screen {
 	public HighScoreScreen(final int width, final int height, final int fps) {
 		super(width, height, fps);
 
-		this.returnCode = 1;
-
 		try {
 			this.highScores = Core.getFileManager().loadHighScores();
 		} catch (NumberFormatException | IOException e) {
@@ -41,38 +38,20 @@ public class HighScoreScreen extends Screen {
 	}
 
 	/**
-	 * Starts the action.
-	 * 
-	 * @return Next screen code.
+	 * Getter for the title of the screen.
+	 *
+	 * @return Title drawn at the top of the screen.
 	 */
-	public final int run() {
-		super.run();
-
-		return this.returnCode;
+	@Override
+	protected final String getTitle() {
+		return MenuItem.HIGH_SCORES.getTitle();
 	}
 
 	/**
-	 * Updates the elements on screen and checks for events.
+	 * Draws the list of high scores.
 	 */
-	protected final void update() {
-		super.update();
-
-		draw();
-		if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)
-				&& this.inputDelay.checkFinished())
-			this.isRunning = false;
-	}
-
-	/**
-	 * Draws the elements associated with the screen.
-	 */
-	private void draw() {
-		drawManager.initDrawing(this);
-
-		drawManager.drawScreenTitle(this, MenuItem.HIGH_SCORES.getTitle());
-		drawManager.drawHighScores(this, this.highScores);
-		drawManager.drawKeyHints(this, "esc back");
-
-		drawManager.completeDrawing(this);
+	@Override
+	protected final void drawContent() {
+		this.drawManager.drawHighScores(this, this.highScores);
 	}
 }
