@@ -215,22 +215,58 @@ public final class FileManager {
 					.getResourceAsStream("scores");
 			reader = new BufferedReader(new InputStreamReader(inputStream));
 
-			Score highScore = null;
-			String name = reader.readLine();
-			String score = reader.readLine();
-
-			while ((name != null) && (score != null)) {
-				highScore = new Score(name, Integer.parseInt(score));
-				highScores.add(highScore);
-				name = reader.readLine();
-				score = reader.readLine();
-			}
+			highScores = parseHighScores(reader);
 		} finally {
 			if (inputStream != null)
 				inputStream.close();
 		}
 
 		return highScores;
+	}
+
+	/**
+	 * Reads high scores as name and score line pairs. Blank lines are
+	 * ignored, and a pair whose score is not a whole number is skipped, so
+	 * one damaged entry does not stop the rest from loading.
+	 *
+	 * @param reader
+	 *            Reader over the scores text.
+	 * @return High scores in file order.
+	 * @throws IOException
+	 *             In case of reading problems.
+	 */
+	public static List<Score> parseHighScores(final BufferedReader reader)
+			throws IOException {
+		List<Score> highScores = new ArrayList<Score>();
+		String name = readNonBlankLine(reader);
+		String score = readNonBlankLine(reader);
+
+		while ((name != null) && (score != null)) {
+			try {
+				highScores.add(new Score(name, Integer.parseInt(score.trim())));
+			} catch (NumberFormatException e) {
+				if (logger != null)
+					logger.warning("Skipping damaged high score: " + name);
+			}
+			name = readNonBlankLine(reader);
+			score = readNonBlankLine(reader);
+		}
+		return highScores;
+	}
+
+	/**
+	 * @param reader
+	 *            Reader to read from.
+	 * @return Next line that is not blank, or null at the end.
+	 * @throws IOException
+	 *             In case of reading problems.
+	 */
+	private static String readNonBlankLine(final BufferedReader reader)
+			throws IOException {
+		String line = reader.readLine();
+		while (line != null && line.trim().isEmpty())
+			line = reader.readLine();
+		return line;
 	}
 
 	/**
@@ -263,16 +299,7 @@ public final class FileManager {
 
 			logger.info("Loading user high scores.");
 
-			Score highScore = null;
-			String name = bufferedReader.readLine();
-			String score = bufferedReader.readLine();
-
-			while ((name != null) && (score != null)) {
-				highScore = new Score(name, Integer.parseInt(score));
-				highScores.add(highScore);
-				name = bufferedReader.readLine();
-				score = bufferedReader.readLine();
-			}
+			highScores = parseHighScores(bufferedReader);
 
 		} catch (FileNotFoundException e) {
 			// loads default if there's no user scores.
