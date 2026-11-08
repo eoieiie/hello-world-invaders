@@ -1,6 +1,7 @@
 package screen;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import engine.Core;
@@ -15,7 +16,7 @@ import engine.Score;
 public class HighScoreScreen extends MenuScreen {
 
 	/** List of past high scores. */
-	private List<Score> highScores;
+	private List<Score> highScores = new ArrayList<Score>();
 
 	/**
 	 * Constructor, establishes the properties of the screen.
