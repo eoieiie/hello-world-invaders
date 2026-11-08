@@ -5,3 +5,10 @@
 
 /.github/   @eoieiie
 /tests/     @kyle891204
+
+# Screen rules and shared code owners.
+/src/screen/                 @kyobak
+/src/screen/GameScreen.java  @kyobak @Aninnom
+/src/screen/Screen.java      @kyobak @Aninnom
+/src/engine/Core.java       @Aninnom
+/src/engine/DrawManager.java @Aninnom @kyobak
