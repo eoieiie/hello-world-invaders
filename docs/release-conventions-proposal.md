@@ -1,13 +1,14 @@
-# Release conventions proposal
+# Release conventions
 
 - Jira: [HW-41](https://helloworld-invaders.atlassian.net/browse/HW-41)
 - Author: Junhyeok Han
 - Proposed: 2026-11-09
-- Status: **Proposed; awaiting Byeongjoo's approval**
-- Proposed review date: 2026-11-23
+- Status: **Accepted**
+- Approved: 2026-11-09 by Byeongjoo in [PR #12](https://github.com/eoieiie/hello-world-invaders/pull/12)
+- Review date: 2026-11-23
 
-This document is a proposal for PR review. Publish the accepted decision in the
-Wiki Decision Log only after approval, including the approval date and PR link.
+Use this convention for sprint releases and retain the approval date and PR link
+when recording the accepted decision in the Wiki Decision Log.
 
 ## Context
 
@@ -24,7 +25,7 @@ does not preserve each sprint's artifact.
 | Keep `latest` and publish a fixed version per sprint | Preserves the exact demo build and evidence | A small manual verification and publishing step each sprint |
 | Add release branches and a separate tag-triggered workflow | Supports independent maintenance lines | More workflow and branch maintenance for one active development line |
 
-## Proposed decision
+## Decision
 
 Choose the second option without changing the existing workflow in this task.
 
@@ -82,19 +83,20 @@ explicit without rewriting earlier evidence.
 
 ## Scope and follow-up
 
-This proposal does not create a tag, publish a release, change workflow triggers,
+This document does not create a tag, publish a release, change workflow triggers,
 or introduce a release branch. A tag-triggered workflow would be a separate
 automation proposal and implementation task.
 
-HW-42 records verification of the existing workflow and released JAR. After two
-weeks, review the publishing effort, wrong-version incidents, and use of
-snapshots in sprint reviews. Record Byeongjoo's approval and its date before
-changing this proposal's status to Accepted or publishing the decision to the
-Wiki.
+HW-42 records verification of the existing workflow and released JAR. Record the
+time spent on each release, including SHA-256 verification, launching the JAR in
+a clean folder, and checking that the `latest` asset matches the source commit.
+At the review on 2026-11-23, assess the publishing effort, wrong-version
+incidents, and use of snapshots in sprint reviews to judge whether the benefits
+justify the work.
 
 The existing workflow notes describe the project font as absent, although
 Silkscreen is already tracked and selected by the code. Correcting that wording
-is a separate follow-up; this proposal does not change the workflow.
+is a separate follow-up; this document does not change the workflow.
 
 ## References
 

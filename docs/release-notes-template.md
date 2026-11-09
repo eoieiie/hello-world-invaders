@@ -1,11 +1,11 @@
 # Release notes template
 
 Related issue: [HW-41](https://helloworld-invaders.atlassian.net/browse/HW-41).
-Status: **Proposed; use after release-convention approval.**
+Status: **Accepted.**
 
 Replace every placeholder with verified information. Do not publish this
-template as an actual release or claim unrun tests passed. The proposed rules
-are in [Release conventions proposal](release-conventions-proposal.md).
+template as an actual release or claim unrun tests passed. The accepted rules
+are in [Release conventions](release-conventions-proposal.md).
 
 ---
 
@@ -17,6 +17,7 @@ are in [Release conventions proposal](release-conventions-proposal.md).
 - SHA-256: VERIFIED_ARTIFACT_DIGEST
 - Runtime: Java 17 or newer
 - Run: `java -jar Invaders.jar`
+- Release preparation and verification time: ACTUAL_TIME
 
 ### Changes
 
