@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 import engine.DrawManager.SpriteType;
+import engine.soundEngine.SoundSettings;
 
 /**
  * Manages files used in the application.
@@ -45,6 +46,8 @@ public final class FileManager {
 	private static final int MAX_SCORES = 7;
 	/** Name of the file containing persistent player progress. */
 	private static final String PLAYER_PROFILE_FILE = "player-profile";
+	/** Name of the file containing persistent audio volumes. */
+	private static final String SOUND_SETTINGS_FILE = "sound-settings";
 	/** Name of the file the player's coin balance is persisted to. */
 	private static final String COINS_FILE = "coins";
 	/** Name of the file the player's diamond balance is persisted to. */
@@ -439,6 +442,71 @@ public final class FileManager {
 		} finally {
 			if (outputStream != null)
 				outputStream.close();
+		}
+	}
+
+	/**
+	 * Loads audio volumes, using defaults for unreadable files or invalid values.
+	 *
+	 * @return Independently validated BGM and SFX volumes.
+	 */
+	public SoundSettings loadSoundSettings() {
+		Properties properties = new Properties();
+		try (InputStream input = new FileInputStream(
+				getSaveFile(SOUND_SETTINGS_FILE))) {
+			properties.load(input);
+		} catch (FileNotFoundException e) {
+			return new SoundSettings(SoundSettings.DEFAULT_BGM_VOLUME,
+					SoundSettings.DEFAULT_SFX_VOLUME);
+		} catch (IOException | IllegalArgumentException | SecurityException e) {
+			logger.warning("Couldn't load sound settings: " + e.getMessage());
+			return new SoundSettings(SoundSettings.DEFAULT_BGM_VOLUME,
+					SoundSettings.DEFAULT_SFX_VOLUME);
+		}
+		return new SoundSettings(loadVolume(properties, "bgmVolume",
+				SoundSettings.DEFAULT_BGM_VOLUME), loadVolume(properties,
+				"sfxVolume", SoundSettings.DEFAULT_SFX_VOLUME));
+	}
+
+	/** Parses one volume without discarding the other category on failure. */
+	private float loadVolume(final Properties properties, final String key,
+			final float fallback) {
+		try {
+			return Float.parseFloat(properties.getProperty(key,
+					Float.toString(fallback)).trim());
+		} catch (NumberFormatException e) {
+			return fallback;
+		}
+	}
+
+	/**
+	 * Saves audio volumes through a temporary file, preserving the previous save
+	 * if writing fails. A failed save never interrupts the game.
+	 *
+	 * @param settings Validated audio volumes to persist.
+	 */
+	public void saveSoundSettings(final SoundSettings settings) {
+		try {
+			File settingsFile = getSaveFile(SOUND_SETTINGS_FILE);
+			File tempFile = getSaveFile(SOUND_SETTINGS_FILE + ".tmp");
+			Properties properties = new Properties();
+			properties.setProperty("bgmVolume",
+					Float.toString(settings.getBgmVolume()));
+			properties.setProperty("sfxVolume",
+					Float.toString(settings.getSfxVolume()));
+			try (OutputStream output = new FileOutputStream(tempFile)) {
+				properties.store(output, "Space Invaders sound settings (0..1)");
+			}
+			try {
+				Files.move(tempFile.toPath(), settingsFile.toPath(),
+						StandardCopyOption.REPLACE_EXISTING,
+						StandardCopyOption.ATOMIC_MOVE);
+			} catch (AtomicMoveNotSupportedException e) {
+				Files.move(tempFile.toPath(), settingsFile.toPath(),
+						StandardCopyOption.REPLACE_EXISTING);
+			}
+		} catch (IOException | SecurityException e) {
+			logger.warning("Couldn't save sound settings: " + e.getMessage());
 		}
 	}
 

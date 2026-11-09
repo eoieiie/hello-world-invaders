@@ -28,11 +28,6 @@ public final class SoundManager {
 	private static SoundManager instance;
 	/** Application logger. */
 	private static Logger logger;
-	/** Default volume of sound effects. */
-	private static final float DEFAULT_SFX_VOLUME = 0.7f;
-	/** Default volume of background music. */
-	private static final float DEFAULT_BGM_VOLUME = 0.5f;
-
 	/** Backend that does the actual playback. */
 	private final AudioBackend backend;
 	/** Volume of sound effects. */
@@ -49,8 +44,9 @@ public final class SoundManager {
 	 */
 	private SoundManager() {
 		logger = Core.getLogger();
-		sfxVolume = DEFAULT_SFX_VOLUME;
-		bgmVolume = DEFAULT_BGM_VOLUME;
+		SoundSettings settings = Core.getFileManager().loadSoundSettings();
+		sfxVolume = settings.getSfxVolume();
+		bgmVolume = settings.getBgmVolume();
 
 		AudioBackend chosen;
 		try {
@@ -166,6 +162,8 @@ public final class SoundManager {
 
 	/**
 	 * Sets the volume of one category.
+	 * Runtime adjustments clamp finite values at the control boundaries;
+	 * invalid saved values instead use defaults to recover corrupt settings.
 	 *
 	 * @param category
 	 *            Category to adjust.
@@ -174,7 +172,10 @@ public final class SoundManager {
 	 */
 	public synchronized void setVolume(final Sound.Category category,
 			final float volume) {
-		float clamped = Math.max(0.0f, Math.min(1.0f, volume));
+		float fallback = category == Sound.Category.BGM
+				? SoundSettings.DEFAULT_BGM_VOLUME : SoundSettings.DEFAULT_SFX_VOLUME;
+		float clamped = Float.isNaN(volume) || Float.isInfinite(volume)
+				? fallback : Math.max(0.0f, Math.min(1.0f, volume));
 		if (category == Sound.Category.BGM) {
 			bgmVolume = clamped;
 			backend.setBgmVolume(muted ? 0.0f : clamped);
@@ -192,6 +193,12 @@ public final class SoundManager {
 	 */
 	public synchronized float getVolume(final Sound.Category category) {
 		return category == Sound.Category.BGM ? bgmVolume : sfxVolume;
+	}
+
+	/** Persists both volumes when leaving Settings, without saving mute state. */
+	public synchronized void saveSettings() {
+		Core.getFileManager().saveSoundSettings(
+				new SoundSettings(bgmVolume, sfxVolume));
 	}
 
 	/**
