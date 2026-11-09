@@ -35,8 +35,11 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           BRANCH: ${{ github.head_ref }}
         run: |
+          # Ignore HTML comments, so the example key in the PR template
+          # comment does not count as a real Jira key.
+          BODY=$(printf '%s' "$PR_BODY" | perl -0777 -pe 's/<!--.*?-->//gs')
           key_pattern='(^|[^[:alnum:]_])HW-[0-9]+([^[:alnum:]_]|$)'
-          if ! [[ "$PR_BODY" =~ $key_pattern ]]; then
+          if ! [[ "$BODY" =~ $key_pattern ]]; then
             echo '::error::Add the uppercase Jira key (HW-123) to the PR description.'
             exit 1
           fi
