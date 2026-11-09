@@ -59,6 +59,8 @@ public class AchievementsScreen extends Screen {
 	 * Horizontal position of the status area.
 	 */
 	private static final int STATUS_X = 320;
+	/** Summary and scroll cue share the row above the key hints. */
+	private static final int SUMMARY_Y = 430;
 	/**
 	 * Time between selection moves, in milliseconds.
 	 */
@@ -76,6 +78,8 @@ public class AchievementsScreen extends Screen {
 	 * Achievements on each page, in page order.
 	 */
 	private List<List<Achievement>> pages;
+	/** Total progress across both pages, refreshed when the screen opens. */
+	private String achievementSummary;
 	/**
 	 * Index of the page currently shown.
 	 */
@@ -109,6 +113,7 @@ public class AchievementsScreen extends Screen {
 		this.pages = new ArrayList<List<Achievement>>();
 		this.pages.add(manager.getNormalAchievements());
 		this.pages.add(manager.getTierAchievements());
+		this.achievementSummary = summarizeAchievements(this.pages);
 		this.totalKills = manager.getTotalEnemiesKilled();
 		this.currentPage = 0;
 		this.selected = 0;
@@ -197,6 +202,20 @@ public class AchievementsScreen extends Screen {
 				AchievementManager.ACHIEVEMENTS_PER_PAGE);
 	}
 
+	/** Counts all achievements, including rows outside the visible page. */
+	static String summarizeAchievements(final List<List<Achievement>> pages) {
+		int unlocked = 0;
+		int total = 0;
+		for (List<Achievement> page : pages) {
+			for (Achievement achievement : page) {
+				total++;
+				if (achievement.isUnlocked())
+					unlocked++;
+			}
+		}
+		return "Unlocked: " + unlocked + "/" + total;
+	}
+
 	/**
 	 * Draws the title, the page label, the current page's rows, and the
 	 * key hints.
@@ -225,16 +244,13 @@ public class AchievementsScreen extends Screen {
 			}
 
 		}
+		String summary = this.achievementSummary;
 		if (this.scrollOffset + getRowCount()
 				< this.pages.get(this.currentPage).size()) {
-			this.drawManager.drawRegularString(
-					" ------  MORE ACHIEVEMENT BELOW  ------",
-					TEXT_X,
-					430,
-					MUTED);
+			summary += "  (more below)";
 		}
-
-
+		this.drawManager.drawMenuRow(this,
+				summary, SUMMARY_Y, false);
 		this.drawManager.drawKeyHints(this,
 				"left right page, up down move, esc back");
 		this.drawManager.completeDrawing(this);
