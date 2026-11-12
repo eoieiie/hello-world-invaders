@@ -1051,7 +1051,7 @@ public final class DrawManager {
 					RenderingHints.KEY_FRACTIONALMETRICS,
 					RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
 
-			String text = "INVADERS";
+			String text = "Invaders";
 			Font titleFont = fontRegular.deriveFont(56f);
 
 			// Keep room for the outline and glow on both sides.
