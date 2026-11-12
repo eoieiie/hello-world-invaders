@@ -28,6 +28,14 @@ import entity.Ship;
 import item.ItemAPI;
 import item.ItemSystem;
 
+import java.awt.BasicStroke;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.geom.AffineTransform;
+import java.awt.image.ConvolveOp;
+import java.awt.image.Kernel;
+
 /**
  * Manages screen drawing.
  *
