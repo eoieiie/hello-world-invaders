@@ -97,3 +97,10 @@ jobs:
           path: |
             build/reports/tests/test/
             build/test-results/test/
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-reports
+          path: build/reports/jacoco/test/
