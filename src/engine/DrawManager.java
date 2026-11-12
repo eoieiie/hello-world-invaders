@@ -84,6 +84,8 @@ public final class DrawManager {
 	private static Font fontSelected;
 	/** Highlighted menu item font properties. */
 	private static FontMetrics fontSelectedMetrics;
+	/** Cached main menu title, including its glow and outline. */
+	private BufferedImage mainMenuTitleImage;
 
 	/** Sprite types mapped to their images. */
 	private static Map<SpriteType, boolean[][]> spriteMap;
