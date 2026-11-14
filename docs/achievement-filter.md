@@ -31,3 +31,16 @@ For a manual check, use a separate game folder and a disposable profile:
 6. Press ESC and reopen Achievements: All mode should be restored.
 
 Do not replace a player's existing profile to create these test conditions.
+
+### Verified on 2026-11-14
+
+- Local JUnit Console 6.1.3: 25 tests passed, including 6 new filter tests.
+  Windows, OpenJDK 27.0.1.0.3, compiled with `--release 17`.
+- GitHub Actions: Java 17 build, Gradle unit tests and title-screen smoke passed.
+- Junhyeok manually verified F toggle/hold, page navigation, scrolling, ESC,
+  reopening in All, restoring hidden rows and retaining requirements.
+- A disposable profile (all five Normal achievements and Bronze Hunter
+  unlocked) verified the completed-page message and mixed Tier filtering.
+  Existing player saves were not used or changed.
+- Captures: [All](screenshots/HW-64/all.png) and
+  [completed page in Locked only](screenshots/HW-64/locked-empty.png).
