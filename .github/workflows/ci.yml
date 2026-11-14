@@ -75,11 +75,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Cache the Gradle wrapper and dependencies. On Nov 9 the download of
+      # the Gradle distribution failed three times (HTTP 504, then timeouts),
+      # so Unit tests could not run. Now that it is a required check, a
+      # download failure would block every pull request.
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Run JUnit tests
         run: ./gradlew --no-daemon test

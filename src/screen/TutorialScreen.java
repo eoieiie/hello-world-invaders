@@ -175,7 +175,7 @@ public final class TutorialScreen extends Screen {
         for (Bullet bullet : bullets) {
             drawManager.drawEntity(bullet, bullet.getPositionX(), bullet.getPositionY());
         }
-        drawManager.drawKeyHints(this, "s skip to stage 1, esc menu");
+        drawManager.drawKeyHints(this, "s skip to stage 1, esc back");
         drawManager.completeDrawing(this);
     }
 }
