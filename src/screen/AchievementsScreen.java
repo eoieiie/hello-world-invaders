@@ -78,6 +78,12 @@ public class AchievementsScreen extends Screen {
 	 * Achievements on each page, in page order.
 	 */
 	private List<List<Achievement>> pages;
+	/** Filtered pages retain the catalogue's order and page boundaries. */
+	private List<List<Achievement>> visiblePages;
+	/** Starts in All mode every time the screen is opened. */
+	private boolean lockedOnly;
+	/** Requires a new F press instead of repeating while F is held. */
+	private boolean filterKeyWasDown;
 	/** Total progress across both pages, refreshed when the screen opens. */
 	private String achievementSummary;
 	/**
@@ -113,6 +119,7 @@ public class AchievementsScreen extends Screen {
 		this.pages = new ArrayList<List<Achievement>>();
 		this.pages.add(manager.getNormalAchievements());
 		this.pages.add(manager.getTierAchievements());
+		this.visiblePages = this.pages;
 		this.achievementSummary = summarizeAchievements(this.pages);
 		this.totalKills = manager.getTotalEnemiesKilled();
 		this.currentPage = 0;
@@ -139,6 +146,16 @@ public class AchievementsScreen extends Screen {
 	@Override
 	protected final void update() {
 		super.update();
+		boolean filterKeyDown = this.inputManager.isKeyDown(KeyEvent.VK_F);
+		if (this.inputDelay.checkFinished()
+				&& filterKeyDown && !this.filterKeyWasDown) {
+			this.lockedOnly = !this.lockedOnly;
+			this.visiblePages = filterAchievements(this.pages, this.lockedOnly);
+			this.selected = 0;
+			this.scrollOffset = 0;
+			this.selectionCooldown.reset();
+		}
+		this.filterKeyWasDown = filterKeyDown;
 		draw();
 		if (this.inputDelay.checkFinished()
 				&& this.selectionCooldown.checkFinished()) {
@@ -152,7 +169,7 @@ public class AchievementsScreen extends Screen {
 			if (this.inputManager.isKeyDown(KeyEvent.VK_DOWN)
 					|| this.inputManager.isKeyDown(KeyEvent.VK_S)) {
 				if (this.selected
-						< this.pages.get(this.currentPage).size() - 1) {
+						< this.visiblePages.get(this.currentPage).size() - 1) {
 					this.selected++;
 					this.selectionCooldown.reset();
 				}
@@ -194,12 +211,27 @@ public class AchievementsScreen extends Screen {
 	 * {@link AchievementManager#ACHIEVEMENTS_PER_PAGE}.
 	 */
 	private int getRowCount() {
-		int remaining = this.pages.get(this.currentPage).size()
+		int remaining = this.visiblePages.get(this.currentPage).size()
 				- this.scrollOffset;
 
 		return Math.min(
 				remaining,
 				AchievementManager.ACHIEVEMENTS_PER_PAGE);
+	}
+
+	/** Filters without changing the catalogue, its pages or achievement objects. */
+	static List<List<Achievement>> filterAchievements(
+			final List<List<Achievement>> pages, final boolean lockedOnly) {
+		List<List<Achievement>> filteredPages = new ArrayList<>();
+		for (List<Achievement> page : pages) {
+			List<Achievement> filteredPage = new ArrayList<>();
+			for (Achievement achievement : page) {
+				if (!lockedOnly || !achievement.isUnlocked())
+					filteredPage.add(achievement);
+			}
+			filteredPages.add(filteredPage);
+		}
+		return filteredPages;
 	}
 
 	/** Counts all achievements, including rows outside the visible page. */
@@ -226,13 +258,16 @@ public class AchievementsScreen extends Screen {
 				this, MenuItem.ACHIEVEMENTS.getTitle());
 
 		String pageLabel = "< " + PAGE_NAMES[this.currentPage] + "  "
-				+ (this.currentPage + 1) + "/" + this.pages.size() + " >";
+				+ (this.currentPage + 1) + "/" + this.pages.size() + " >  "
+				+ (this.lockedOnly ? "Locked only" : "All");
 		this.drawManager.drawMenuRow(this, pageLabel, PAGE_LABEL_Y, false);
 
-		List<Achievement> page = this.pages.get(this.currentPage);
+		List<Achievement> page = this.visiblePages.get(this.currentPage);
 		if (page.isEmpty()) {
-			this.drawManager.drawRegularString("No achievements yet.",
-					TEXT_X, FIRST_ROW_Y + 24, MUTED);
+			this.drawManager.drawMenuRow(this, this.lockedOnly
+					? "All achievements on this page unlocked."
+					: "No achievements yet.",
+					FIRST_ROW_Y + 24, false);
 		} else {
 			for (int i = 0; i < getRowCount(); i++) {
 				int achievementIndex = this.scrollOffset + i;
@@ -246,13 +281,13 @@ public class AchievementsScreen extends Screen {
 		}
 		String summary = this.achievementSummary;
 		if (this.scrollOffset + getRowCount()
-				< this.pages.get(this.currentPage).size()) {
+				< page.size()) {
 			summary += "  (more below)";
 		}
 		this.drawManager.drawMenuRow(this,
 				summary, SUMMARY_Y, false);
 		this.drawManager.drawKeyHints(this,
-				"left right page, up down move, esc back");
+				"a/d page, w/s row, f all/locked, esc back");
 		this.drawManager.completeDrawing(this);
 	}
 
