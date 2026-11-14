@@ -135,9 +135,8 @@ public class CashOutScreen extends Screen {
 
 		drawRiskPreview(this.height / 2 + 60);
 
-		this.drawManager.drawKeyHints(this, "esc cash out and end run");
-		this.drawManager.drawCenteredRegularString(this, "space risk it on level "
-				+ this.nextLevel, this.height - 45);
+		this.drawManager.drawKeyHints(this,
+				"space risk it, esc cash out and end run");
 
 		this.drawManager.completeDrawing(this);
 	}
