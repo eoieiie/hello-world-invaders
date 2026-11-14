@@ -255,8 +255,13 @@ public final class ItemSystem {
 
     /** Called every frame. Measures elapsed time itself. No pickup/use when shipAvailable=false. */
     public void update(Entity ship, boolean shipAvailable) {
+        update(ship, shipAvailable, System.nanoTime());
+    }
+
+    /** update with the frame time given, so tests can control the clock. */
+    void update(Entity ship, boolean shipAvailable, long now) {
         if (!isLevelActive()) return;
-        long now = System.nanoTime(), delta = 0;
+        long delta = 0;
         if (lastUpdateNanos < 0) lastUpdateNanos = now;
         else {
             delta = (now - lastUpdateNanos) / 1_000_000L;
@@ -265,6 +270,14 @@ public final class ItemSystem {
         Bounds bounds = new Bounds(ship.getPositionX(), ship.getPositionY(),
             Math.max(1, ship.getWidth()), Math.max(1, ship.getHeight()));
         manager.update(delta, new PlayerSnapshot(bounds, shipAvailable, shipAvailable));
+    }
+
+    /**
+     * Called when the game resumes from a pause. update() is not called while paused, so without this
+     * the whole pause would count as one frame and timed effects and grounded drops would expire.
+     */
+    public void resumeAfterPause() {
+        lastUpdateNanos = -1;
     }
 
     /** Called when an enemy is defeated. Rolls a drop at the enemy's center. */
