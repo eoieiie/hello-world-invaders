@@ -845,6 +845,8 @@ public class GameScreen extends Screen {
 			((FinalBoss) this.midBoss).resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		}
+		// Item timers (Boost, drops) skip the paused time too (HW-68).
+		this.items.resumeAfterPause();
 		this.paused = false;
 		this.pauseStartedAt = 0;
 	}
