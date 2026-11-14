@@ -28,6 +28,14 @@ import entity.Ship;
 import item.ItemAPI;
 import item.ItemSystem;
 
+import java.awt.BasicStroke;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.geom.AffineTransform;
+import java.awt.image.ConvolveOp;
+import java.awt.image.Kernel;
+
 /**
  * Manages screen drawing.
  *
@@ -76,6 +84,8 @@ public final class DrawManager {
 	private static Font fontSelected;
 	/** Highlighted menu item font properties. */
 	private static FontMetrics fontSelectedMetrics;
+	/** Cached main menu title, including its glow and outline. */
+	private BufferedImage mainMenuTitleImage;
 
 	/** Sprite types mapped to their images. */
 	private static Map<SpriteType, boolean[][]> spriteMap;
@@ -1014,10 +1024,145 @@ public final class DrawManager {
 	 *            Screen to draw on.
 	 */
 	public void drawTitle(final Screen screen) {
-		String titleString = "Invaders";
+		if (mainMenuTitleImage == null
+				|| mainMenuTitleImage.getWidth() != screen.getWidth()
+				|| mainMenuTitleImage.getHeight() != screen.getHeight()) {
+			mainMenuTitleImage = createMainMenuTitle(
+					screen.getWidth(), screen.getHeight());
+		}
 
-		backBufferGraphics.setColor(Color.GREEN);
-		drawCenteredBigString(screen, titleString, screen.getHeight() / 3);
+		backBufferGraphics.drawImage(mainMenuTitleImage, 0, 0, null);
+	}
+
+	/**
+	 * Builds the Amber title once for the current screen dimensions.
+	 */
+	private BufferedImage createMainMenuTitle(final int width,
+											  final int height) {
+		BufferedImage image = new BufferedImage(
+				width, height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D titleGraphics = image.createGraphics();
+
+		try {
+			titleGraphics.setRenderingHint(
+					RenderingHints.KEY_ANTIALIASING,
+					RenderingHints.VALUE_ANTIALIAS_OFF);
+			titleGraphics.setRenderingHint(
+					RenderingHints.KEY_FRACTIONALMETRICS,
+					RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
+
+			String text = "Invaders";
+			Font titleFont = fontRegular.deriveFont(56f);
+
+			// Keep room for the outline and glow on both sides.
+			int availableWidth = Math.max(1, width - 68);
+			while (titleFont.getSize2D() > 1f
+					&& titleGraphics.getFontMetrics(titleFont)
+					.stringWidth(text) > availableWidth) {
+				titleFont = titleFont.deriveFont(
+						titleFont.getSize2D() - 1f);
+			}
+
+			Shape letters = titleFont.createGlyphVector(
+							titleGraphics.getFontRenderContext(), text)
+					.getOutline();
+			Rectangle bounds = letters.getBounds();
+
+			// Keep the existing title baseline.
+			Shape title = AffineTransform.getTranslateInstance(
+					(width - bounds.width) / 2.0 - bounds.x,
+					height / 3).createTransformedShape(letters);
+
+			Color amber = new Color(255, 147, 28);
+			Color face = new Color(255, 235, 158);
+			Color shadow = new Color(91, 39, 8);
+
+			BufferedImage glow = new BufferedImage(
+					width, height, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D glowGraphics = glow.createGraphics();
+			try {
+				drawMainTitleLayer(glowGraphics, title, amber, 4f, 0);
+			} finally {
+				glowGraphics.dispose();
+			}
+
+			// Broad glow, followed by a tighter glow.
+			titleGraphics.setComposite(
+					AlphaComposite.SrcOver.derive(0.67f));
+			titleGraphics.drawImage(blurTitleGlow(glow, 15), 0, 0, null);
+
+			titleGraphics.setComposite(
+					AlphaComposite.SrcOver.derive(0.72f));
+			titleGraphics.drawImage(blurTitleGlow(glow, 6), 0, 0, null);
+
+			titleGraphics.setComposite(AlphaComposite.SrcOver);
+
+			drawMainTitleLayer(titleGraphics, title, shadow, 4f, 4);
+			drawMainTitleLayer(titleGraphics, title, amber, 3f, 0);
+			drawMainTitleLayer(titleGraphics, title, face, 0f, 0);
+		} finally {
+			titleGraphics.dispose();
+		}
+
+		return image;
+	}
+
+	/**
+	 * Draws one title layer without changing the caller's graphics settings.
+	 */
+	private void drawMainTitleLayer(final Graphics2D target,
+									final Shape title,
+									final Color color,
+									final float strokeWidth,
+									final int offsetY) {
+		Graphics2D layer = (Graphics2D) target.create();
+		try {
+			layer.translate(0, offsetY);
+			layer.setColor(color);
+
+			if (strokeWidth > 0f) {
+				layer.setStroke(new BasicStroke(
+						strokeWidth,
+						BasicStroke.CAP_SQUARE,
+						BasicStroke.JOIN_MITER));
+				layer.draw(title);
+			}
+
+			layer.fill(title);
+		} finally {
+			layer.dispose();
+		}
+	}
+
+	/**
+	 * Softens the glow using horizontal and vertical Gaussian passes.
+	 */
+	private BufferedImage blurTitleGlow(final BufferedImage source,
+										final int radius) {
+		int length = radius * 2 + 1;
+		float[] weights = new float[length];
+		double sigma = radius / 2.3;
+		double total = 0;
+
+		for (int i = 0; i < length; i++) {
+			double distance = i - radius;
+			weights[i] = (float) Math.exp(
+					-distance * distance / (2 * sigma * sigma));
+			total += weights[i];
+		}
+
+		for (int i = 0; i < length; i++) {
+			weights[i] /= (float) total;
+		}
+
+		ConvolveOp horizontal = new ConvolveOp(
+				new Kernel(length, 1, weights),
+				ConvolveOp.EDGE_ZERO_FILL, null);
+		ConvolveOp vertical = new ConvolveOp(
+				new Kernel(1, length, weights),
+				ConvolveOp.EDGE_ZERO_FILL, null);
+
+		return vertical.filter(horizontal.filter(source, null), null);
 	}
 
 	/**
