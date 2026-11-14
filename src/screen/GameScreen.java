@@ -286,6 +286,8 @@ public class GameScreen extends Screen {
 	private Cooldown pauseKeyCooldown;
 	/** Debounces cursor moves in the pause menu. */
 	private Cooldown pauseSelectionCooldown;
+	/** Ignores a Space held from gameplay until it is released (HW-66). */
+	private final KeyReleaseGate pauseConfirmGate = new KeyReleaseGate();
 	/** Option the cursor is on in the pause menu. */
 	private PauseOption pauseSelection;
 	/** Score the level started with, restored by "Restart". */
@@ -487,6 +489,9 @@ public class GameScreen extends Screen {
 			else {
 				this.paused = true;
 				this.pauseStartedAt = System.currentTimeMillis();
+				// Space held to fire must not confirm "Resume" at once.
+				this.pauseConfirmGate.close();
+				this.pauseSelectionCooldown.reset();
 			}
 			this.pauseKeyCooldown.reset();
 			// Ghost Trail starts fresh after a pause. AUTHORED BY: VFX TEAM (Effection)
@@ -790,6 +795,9 @@ public class GameScreen extends Screen {
 	 * Handles cursor movement and selection while the pause menu is open.
 	 */
 	private void updatePauseMenu() {
+		// Read every frame so a release during the cooldown is still seen.
+		boolean confirmPressed = this.pauseConfirmGate.accept(
+				inputManager.isKeyDown(KeyEvent.VK_SPACE));
 		if (!this.pauseSelectionCooldown.checkFinished())
 			return;
 
@@ -801,7 +809,7 @@ public class GameScreen extends Screen {
 				|| inputManager.isKeyDown(KeyEvent.VK_S)) {
 			this.pauseSelection = this.pauseSelection.next();
 			this.pauseSelectionCooldown.reset();
-		} else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+		} else if (confirmPressed) {
 			this.pauseSelectionCooldown.reset();
 			confirmPauseSelection();
 		}
