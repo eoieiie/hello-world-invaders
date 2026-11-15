@@ -43,6 +43,10 @@ jobs:
             echo '::error::Add the uppercase Jira key (HW-123) to the PR description.'
             exit 1
           fi
+          # Jira links branches only by an uppercase key. A lowercase hw-
+          # branch was used twice (PR #6, PR #18) and the old warning went
+          # unnoticed, so this now fails.
           if ! [[ "$BRANCH" =~ ^hello-world/HW-[0-9]+-[a-z0-9-]+$ ]]; then
-            echo '::warning::Use hello-world/HW-123-short-name for new branches.'
+            echo "::error::Branch must be hello-world/HW-123-short-name with an uppercase key. Got: $BRANCH. Rename it on GitHub (Code > Branches > rename); the PR follows the new name."
+            exit 1
           fi
