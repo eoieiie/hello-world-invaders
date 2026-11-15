@@ -2,6 +2,7 @@ package entity;
 
 import java.awt.Color;
 import java.util.Set;
+import java.util.Random;
 import engine.Cooldown;
 import engine.Core;
 import engine.DrawManager.SpriteType;
@@ -16,6 +17,10 @@ public final class MidBoss extends Entity implements Boss {
     private static final int MIN_SHOOTING_INTERVAL = 500;
     private static final int INTERVAL_REDUCTION = 30;
     private static final int BULLET_SPEED = 5;
+    private static final double SPREAD_CHANCE = 0.30;
+    private static final int SPREAD_SPEED_X = 2;
+    private static final int SPREAD_SPEED_Y = 4;
+    private final Random shootingRandom;
     /** Health points this boss starts an encounter with. */
     private static final int MAX_HP = 2;
     private final Cooldown animationCooldown = Core.getCooldown(500);
@@ -27,7 +32,13 @@ public final class MidBoss extends Entity implements Boss {
     private int speedY;
 
     public MidBoss(final int x, final int y, final SpriteType sprite) {
+        this(x, y, sprite, new Random());
+    }
+
+    /** Allows deterministic attack selection in regression tests. */
+    MidBoss(final int x, final int y, final SpriteType sprite, final Random random) {
         super(x, y, 32, 20, Color.ORANGE);
+        this.shootingRandom = random;
         if (sprite != SpriteType.MidBoss1 && sprite != SpriteType.MidBoss2)
             throw new IllegalArgumentException("Unsupported boss sprite: " + sprite);
         this.spriteType = sprite;
@@ -106,8 +117,16 @@ public final class MidBoss extends Entity implements Boss {
                 shootingInterval - INTERVAL_REDUCTION);
         shootCooldown = Core.getCooldown(shootingInterval);
         shootCooldown.reset();
-        bullets.add(BulletPool.getBullet(positionX + this.width / 2,
-                positionY + this.height, BULLET_SPEED));
+        int startX = positionX + this.width / 2;
+        int startY = positionY + this.height;
+        bullets.add(BulletPool.getBullet(startX, startY, BULLET_SPEED));
+        if (shootingRandom.nextDouble() < SPREAD_CHANCE) {
+            for (int horizontalSpeed : new int[] {-SPREAD_SPEED_X, SPREAD_SPEED_X}) {
+                Bullet bullet = BulletPool.getBullet(startX, startY, SPREAD_SPEED_Y);
+                bullet.setSpeedX(horizontalSpeed);
+                bullets.add(bullet);
+            }
+        }
         return true;
     }
 }

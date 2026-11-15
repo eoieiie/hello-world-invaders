@@ -400,8 +400,22 @@ public final class DrawManager {
 			}
 		} else {
 			// For all other entities (ships, enemies, and ENEMY bullets), use the standard 2x pixel drawing
-			drawSprite(entity.getSpriteType(), positionX, positionY,
-					entity.getColor());
+			AffineTransform originalTransform = g2d.getTransform();
+			try {
+				if (entity instanceof entity.Bullet) {
+					entity.Bullet bullet = (entity.Bullet) entity;
+					if (bullet.getSpeed() > 0 && bullet.getSpeedX() != 0) {
+						// The unrotated enemy sprite points down, along positive Y.
+						g2d.rotate(-Math.atan2(bullet.getSpeedX(), bullet.getSpeed()),
+								positionX + entity.getWidth() / 2.0,
+								positionY + entity.getHeight() / 2.0);
+					}
+				}
+				drawSprite(entity.getSpriteType(), positionX, positionY,
+						entity.getColor());
+			} finally {
+				g2d.setTransform(originalTransform);
+			}
 		}
 
 		g2d.setComposite(AlphaComposite.SrcOver); // back to normal
