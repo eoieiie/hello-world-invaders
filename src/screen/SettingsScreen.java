@@ -4,6 +4,7 @@ import engine.Cooldown;
 import engine.Core;
 import java.awt.event.KeyEvent;
 import java.awt.Color;
+import engine.soundEngine.MenuSounds;
 import engine.soundEngine.Sound;
 import engine.soundEngine.SoundManager;
 
@@ -27,6 +28,8 @@ public class SettingsScreen extends Screen {
 	private int draggingSlider = -1;
 	/** Whether the left mouse button was pressed on the previous frame. */
 	private boolean mouseWasPressed;
+	/** Whether the SFX volume changed and its preview has not played yet. */
+	private boolean sfxPreviewPending;
 
 	/**
 	 * Constructor, establishes the properties of the screen.
@@ -61,7 +64,33 @@ public class SettingsScreen extends Screen {
 		int percent = Math.max(0,
 				Math.min(100, getVolumePercent(category) + delta));
 
+		changeVolume(category, percent);
+	}
+
+	/**
+	 * Sets a volume and, when the SFX level actually changes, queues a
+	 * preview so the player hears the new level.
+	 *
+	 * @param category
+	 *            Category to adjust.
+	 * @param percent
+	 *            New volume between 0 and 100.
+	 */
+	private void changeVolume(final Sound.Category category,
+			final int percent) {
+		if (category == Sound.Category.SFX
+				&& percent != getVolumePercent(category))
+			this.sfxPreviewPending = true;
 		this.soundManager.setVolume(category, percent / 100f);
+	}
+
+	/**
+	 * Plays the queued SFX preview. If it is rate limited, it stays queued
+	 * and plays on a later frame, so the last level set is always heard.
+	 */
+	private void playPendingSfxPreview() {
+		if (this.sfxPreviewPending && MenuSounds.playVolumePreview())
+			this.sfxPreviewPending = false;
 	}
 	/**
 	 * Starts the action.
@@ -111,6 +140,7 @@ public class SettingsScreen extends Screen {
 			}
 		}
 
+		playPendingSfxPreview();
 		this.mouseWasPressed = mousePressed;
 		draw();
 	}
@@ -153,7 +183,7 @@ public class SettingsScreen extends Screen {
 					? Sound.Category.BGM
 					: Sound.Category.SFX;
 
-			this.soundManager.setVolume(category, percent / 100f);
+			changeVolume(category, percent);
 
 			if (!mousePressed)
 				this.draggingSlider = -1;
