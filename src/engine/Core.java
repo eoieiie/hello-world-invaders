@@ -162,6 +162,7 @@ public final class Core {
 					}
 				}
 				// Game & score.
+				boolean quitToMenu = false;
 				do {
 					// One extra live every few levels.
 					boolean bonusLife = gameState.getLevel()
@@ -175,6 +176,10 @@ public final class Core {
 							+ " game screen at " + FPS + " fps.");
 					frame.setScreen(currentScreen);
 					LOGGER.info("Closing game screen.");
+					if (((GameScreen) currentScreen).isQuitToMenu()) {
+						quitToMenu = true;
+						break;
+					}
 
 					gameState = ((GameScreen) currentScreen).getGameState();
 
@@ -191,7 +196,13 @@ public final class Core {
 
 				} while (gameState.getLivesRemaining() > 0
 						&& gameState.getLevel() <= NUM_LEVELS);
-
+				// Quit from the pause menu: no score screen, no high score,
+				// and pending diamonds are lost as on death.
+				if (quitToMenu) {
+					LOGGER.info("Run quit from the pause menu.");
+					returnCode = 1;
+					break;
+				}
 				gameState = settlePendingDiamonds(gameState);
 
 				LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
