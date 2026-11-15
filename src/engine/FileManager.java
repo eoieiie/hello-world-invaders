@@ -230,7 +230,8 @@ public final class FileManager {
 	/**
 	 * Reads high scores as name and score line pairs. Blank lines are
 	 * ignored, and a pair whose score is not a whole number is skipped, so
-	 * one damaged entry does not stop the rest from loading.
+	 * one damaged entry does not stop the rest from loading. If a name line
+	 * is missing, the line read as a score is used as the next name.
 	 *
 	 * @param reader
 	 *            Reader over the scores text.
@@ -247,14 +248,18 @@ public final class FileManager {
 		while ((name != null) && (score != null)) {
 			try {
 				highScores.add(new Score(name, Integer.parseInt(score.trim())));
+				name = readNonBlankLine(reader);
+				score = readNonBlankLine(reader);
 			} catch (NumberFormatException e) {
 				if (logger != null)
 					logger.warning("Skipping damaged high score: " + name);
+				// If a name line was lost, this line is the next name.
+				name = score;
+				score = readNonBlankLine(reader);
 			}
-			name = readNonBlankLine(reader);
-			score = readNonBlankLine(reader);
 		}
 		return highScores;
+
 	}
 
 	/**
