@@ -19,6 +19,7 @@ import screen.MenuItem;
 import screen.Screen;
 import screen.Starfield;
 import entity.Boss;
+import entity.Bullet;
 import entity.Coin;
 import entity.DiamondDrop;
 import entity.Entity;
@@ -378,7 +379,7 @@ public final class DrawManager {
 				AlphaComposite.SRC_OVER, alpha));
 
 		// If the entity is a Bullet fired by the PLAYER (speed < 0), stretch its sprite to match its actual dimensions.
-		if (entity instanceof entity.Bullet && ((entity.Bullet) entity).getSpeed() < 0) {
+		if (entity instanceof Bullet && ((Bullet) entity).getSpeed() < 0) {
 			boolean[][] image = spriteMap.get(entity.getSpriteType());
 			if (image != null && image.length > 0) {
 				// Calculate how much to stretch each pixel of the sprite
@@ -398,24 +399,25 @@ public final class DrawManager {
 					}
 				}
 			}
-		} else {
-			// For all other entities (ships, enemies, and ENEMY bullets), use the standard 2x pixel drawing
+		} else if (entity instanceof Bullet
+				&& ((Bullet) entity).getSpeed() > 0
+				&& ((Bullet) entity).getSpeedX() != 0) {
+			Bullet bullet = (Bullet) entity;
 			AffineTransform originalTransform = g2d.getTransform();
 			try {
-				if (entity instanceof entity.Bullet) {
-					entity.Bullet bullet = (entity.Bullet) entity;
-					if (bullet.getSpeed() > 0 && bullet.getSpeedX() != 0) {
-						// The unrotated enemy sprite points down, along positive Y.
-						g2d.rotate(-Math.atan2(bullet.getSpeedX(), bullet.getSpeed()),
-								positionX + entity.getWidth() / 2.0,
-								positionY + entity.getHeight() / 2.0);
-					}
-				}
+				// The unrotated enemy sprite points down, along positive Y.
+				g2d.rotate(-Math.atan2(bullet.getSpeedX(), bullet.getSpeed()),
+						positionX + entity.getWidth() / 2.0,
+						positionY + entity.getHeight() / 2.0);
 				drawSprite(entity.getSpriteType(), positionX, positionY,
 						entity.getColor());
 			} finally {
 				g2d.setTransform(originalTransform);
 			}
+		} else {
+			// Ships and straight enemy bullets need no transform copy.
+			drawSprite(entity.getSpriteType(), positionX, positionY,
+					entity.getColor());
 		}
 
 		g2d.setComposite(AlphaComposite.SrcOver); // back to normal
