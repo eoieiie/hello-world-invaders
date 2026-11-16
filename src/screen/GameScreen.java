@@ -120,6 +120,8 @@ public class GameScreen extends Screen {
 	private static final int PAUSE_KEY_DEBOUNCE = 200;
 	/** Minimum time between two pause-menu cursor moves. */
 	private static final int PAUSE_SELECTION_DEBOUNCE = 200;
+	/** Whether the game is in practice mode. */
+	private final boolean practiceMode;
 
 	/**
 	 * Options listed in the pause menu, in the order they are drawn.
@@ -318,6 +320,19 @@ public class GameScreen extends Screen {
 	/** Boss encounter; normal stages use enemyShipFormation instead. */
 	private Boss midBoss;
 
+	/** Creates a normal-play screen with practice mode disabled. */
+	public GameScreen(
+        final GameState gameState,
+        final GameSettings gameSettings,
+        final boolean bonusLife,
+        final int width,
+        final int height,
+        final int fps) {
+
+    this(gameState, gameSettings, bonusLife,
+            width, height, fps, false);
+	}
+
 	/**
 	 * Constructor, establishes the properties of the screen.
 	 *
@@ -333,10 +348,12 @@ public class GameScreen extends Screen {
 	 *            Screen height.
 	 * @param fps
 	 *            Frames per second, frame rate at which the game is run.
+	 * @param practiceMode
+	 *			  Whether this screen runs a standalone boss challenge.
 	 */
 	public GameScreen(final GameState gameState,
 					  final GameSettings gameSettings, final boolean bonusLife,
-					  final int width, final int height, final int fps) {
+					  final int width, final int height, final int fps, final boolean practiceMode) {
 		super(width, height, fps);
 
 		this.gameSettings = gameSettings;
@@ -352,7 +369,7 @@ public class GameScreen extends Screen {
 		this.levelsCompletedRun = gameState.getLevelsCompletedRun();
         this.coinsCollected = gameState.getCoinsCollected();
 		this.tookDamage = false;
-
+		this.practiceMode = practiceMode;
 
 
 		// Snapshot of how the level started, so "Restart" has something to
@@ -430,8 +447,14 @@ public class GameScreen extends Screen {
 		this.pauseSelection = PauseOption.RESUME;
 		this.pauseStartedAt = 0;
 
-		// Item System (Team CS): level 1 starts a new run, later levels keep it.
-		this.items = ItemSystem.forLevel(this.level);
+		// Item System (Team CS): initialize item state for the selected mode.
+		if (this.practiceMode) {
+			// Boss challenge: fresh item state with the currently equipped item.
+			this.items = ItemSystem.newPracticeRun();
+		} else {
+			// Normal gameplay: maintains item state between stages.
+			this.items = ItemSystem.forLevel(this.level);
+		}
 		this.items.beginLevel(this.level, this.width, this.ship,
 				new ItemSystem.GameHooks() {
 					public int getLives() { return lives; }

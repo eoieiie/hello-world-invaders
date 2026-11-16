@@ -14,8 +14,8 @@ package screen;
  */
 public enum MenuItem {
 
-	/** Starts the game. */
-	PLAY("Play", 2, true),
+	/** Opens the mode selection screen. */
+	PLAY("Play", 8, true),
 	/** Customize screen (ship selection). */
 	SHIP_SELECT("Customize", 7, true),
 	/** Shop screen. */

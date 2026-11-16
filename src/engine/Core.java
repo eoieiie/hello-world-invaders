@@ -13,6 +13,7 @@ import screen.AchievementsScreen;
 import screen.CashOutScreen;
 import screen.GameScreen;
 import screen.HighScoreScreen;
+import screen.ModeSelectScreen;
 import screen.ScoreScreen;
 import screen.Screen;
 import screen.SettingsScreen;
@@ -255,6 +256,38 @@ public final class Core {
 						+ " ship select screen at " + FPS + " fps.");
 				returnCode = frame.setScreen(currentScreen);
 				LOGGER.info("Closing ship select screen.");
+				break;
+			case 8:
+				// Mode select.
+				currentScreen = new ModeSelectScreen(width, height, FPS);
+				returnCode = frame.setScreen(currentScreen);
+				break;
+			case 9:
+				// Boss challenge.
+				int bossLevel = ModeSelectScreen.bossLevel;
+
+				GameState bossState = new GameState(
+					bossLevel,
+					gameState.getScore(),
+					gameState.getLivesRemaining(),
+					gameState.getBulletsShot(),
+					gameState.getShipsDestroyed(),
+					gameState.getPendingDiamonds(),
+					gameState.getLevelsCompletedRun(),
+                    gameState.getCoinsCollected()
+				);
+
+				currentScreen = new GameScreen(
+					bossState,
+					gameSettings.get(bossLevel - 1),
+					false,
+					width, height, FPS, true
+				);
+
+				frame.setScreen(currentScreen);
+				GameState bossResult = ((GameScreen) currentScreen).getGameState();
+				settlePendingDiamonds(bossResult);
+				returnCode = 8;
 				break;
 			default:
 				// No screen for this code yet - back to the menu instead of
