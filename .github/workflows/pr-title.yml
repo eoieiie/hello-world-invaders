@@ -47,6 +47,6 @@ jobs:
           # branch was used twice (PR #6, PR #18) and the old warning went
           # unnoticed, so this now fails.
           if ! [[ "$BRANCH" =~ ^hello-world/HW-[0-9]+-[a-z0-9-]+$ ]]; then
-            echo "::error::Branch must be hello-world/HW-123-short-name with an uppercase key. Got: $BRANCH. Rename it on GitHub (Code > Branches > rename); the PR follows the new name."
+            echo "::error::Branch must be hello-world/HW-123-short-name with an uppercase key. Got: $BRANCH. Push your commits to a new branch with that name and open a new PR. Renaming the branch on GitHub closes this PR."
             exit 1
           fi
