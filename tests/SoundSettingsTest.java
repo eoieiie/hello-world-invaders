@@ -28,13 +28,13 @@ import engine.soundEngine.SoundSettings;
 import screen.Screen;
 import screen.SettingsScreen;
 
-/** HW-51 JUnit scenarios, each run with isolated classes and save files. */
+/** HW-51 and HW-39 JUnit scenarios, each run with isolated classes and save files. */
 public final class SoundSettingsTest {
     private static final FileManager FILES = Core.getFileManager();
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"firstRun", "corruptFiles", "invalidValues", "boundaries",
-            "ioFailures", "runtimeVolumes", "settingsExitAndRestart"})
+            "ioFailures", "runtimeVolumes", "settingsExitAndRestart", "sfxPreview"})
     void persistsSoundSettings(String scenario, @TempDir Path root) throws Exception {
         Path classes = root.resolve("classes");
         for (Class<?> type : new Class<?>[]{Core.class, SoundSettingsTest.class}) {
@@ -93,8 +93,9 @@ public final class SoundSettingsTest {
     /** Records the exact volumes supplied to audio playback without a device. */
     private static final class RecordingBackend implements AudioBackend {
         private float bgm = -1, sfx = -1;
+        private int sfxPlays;
         public void preload(Sound sound) { }
-        public void playSfx(Sound sound, float volume) { sfx = volume; }
+        public void playSfx(Sound sound, float volume) { sfx = volume; sfxPlays++; }
         public void playBgm(Sound sound, float volume) { bgm = volume; }
         public void stopBgm() { }
         public boolean isBgmPlaying() { return false; }
@@ -250,6 +251,42 @@ public final class SoundSettingsTest {
             Files.createDirectory(temp);
             exit(screen());
             Files.delete(temp);
+            break;
+        case "sfxPreview":
+            RecordingBackend preview = record(manager);
+            SettingsScreen menu = screen();
+            Class<?>[] step = {int.class};
+            field(SettingsScreen.class, "currentMenuItem").set(menu, 0);
+            call(menu, "adjustSelectedVolume", step, 10);
+            call(menu, "playPendingSfxPreview", new Class<?>[0]);
+            check(preview.sfxPlays == 0, "BGM change plays no SFX preview");
+            field(SettingsScreen.class, "currentMenuItem").set(menu, 1);
+            call(menu, "adjustSelectedVolume", step, -10);
+            call(menu, "playPendingSfxPreview", new Class<?>[0]);
+            check(preview.sfxPlays == 1 && preview.sfx == 0.6f, "SFX change previews new volume");
+            // A second change right away is rate limited, then heard at its final level.
+            call(menu, "adjustSelectedVolume", step, -10);
+            call(menu, "playPendingSfxPreview", new Class<?>[0]);
+            check(preview.sfxPlays == 1, "Rapid preview is rate limited");
+            Thread.sleep(150);
+            call(menu, "playPendingSfxPreview", new Class<?>[0]);
+            check(preview.sfxPlays == 2 && preview.sfx == 0.5f, "Queued preview plays final volume");
+            // Dragging: SFX 25% is (156, 253); holding still must not repeat the preview.
+            Thread.sleep(150);
+            field(Core.getInputManager().getClass(), "mouseX").set(Core.getInputManager(), 156);
+            field(Core.getInputManager().getClass(), "mouseY").set(Core.getInputManager(), 253);
+            call(menu, "updateMouseVolume", new Class<?>[]{boolean.class}, true);
+            call(menu, "playPendingSfxPreview", new Class<?>[0]);
+            check(preview.sfxPlays == 3 && preview.sfx == 0.25f, "Drag previews new volume");
+            Thread.sleep(150);
+            call(menu, "updateMouseVolume", new Class<?>[]{boolean.class}, false);
+            call(menu, "playPendingSfxPreview", new Class<?>[0]);
+            check(preview.sfxPlays == 3, "Unchanged volume plays no preview");
+            // Already at 0%: pressing left changes nothing, so nothing plays.
+            manager.setVolume(Sound.Category.SFX, 0);
+            call(menu, "adjustSelectedVolume", step, -10);
+            call(menu, "playPendingSfxPreview", new Class<?>[0]);
+            check(preview.sfxPlays == 3, "Clamped SFX change plays no preview");
             break;
         default: throw new IllegalArgumentException(args[1]);
         }
