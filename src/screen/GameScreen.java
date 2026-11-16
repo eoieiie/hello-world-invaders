@@ -978,7 +978,7 @@ public class GameScreen extends Screen {
 			drawManager.drawPauseMenu(this, options,
 					this.pauseSelection.ordinal());
 			drawManager.drawKeyHints(this,
-					"w+s / arrows to move, space to select, P to resume");
+					"w+s/arrows move, space select, p resume");
 		}
 
 		// Countdown to game start (skipped while paused, so the pause menu
@@ -994,7 +994,7 @@ public class GameScreen extends Screen {
 			drawManager.drawHorizontalLine(this, this.height / 2 + this.height
 					/ 12);
 			drawManager.drawItemHint(this, this.items); // Item System (Team CS)
-			drawManager.drawKeyHints(this, "P to pause");
+			drawManager.drawKeyHints(this, "p pause");
 		}
 
 
