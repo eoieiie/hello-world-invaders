@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -39,6 +40,11 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	private static final int Y_SPEED = 4;
 	/** Speed of the bullets shot by the members. */
 	private static final int BULLET_SPEED = 4;
+	/** Side bullets stay slower than the original bullet in total speed. */
+	private static final int SPREAD_SPEED_X = 2;
+	private static final int SPREAD_SPEED_Y = 3;
+	private final double spreadChance;
+	private final Random shootingRandom;
 	/** Proportion of differences between shooting times. */
 	private static final double SHOOTING_VARIANCE = .2;
 	/** Margin on the sides of the screen. */
@@ -127,6 +133,26 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 *            Current game settings.
 	 */
 	public EnemyShipFormation(final GameSettings gameSettings) {
+		this(gameSettings, 1);
+	}
+
+	/** Creates a formation with the attack pattern appropriate to its stage. */
+	public EnemyShipFormation(final GameSettings gameSettings, final int level) {
+		this(gameSettings, level, new Random());
+	}
+
+	/** Allows deterministic attack selection in regression tests. */
+	EnemyShipFormation(final GameSettings gameSettings, final int level,
+			final Random shootingRandom) {
+		// Lower late-stage probabilities compensate for shorter firing intervals.
+		this.spreadChance = switch (level) {
+			case 4 -> 0.20;
+			case 6 -> 0.40;
+			case 7, 8 -> 0.30;
+			case 9 -> 0.25;
+			default -> 0.0;
+		};
+		this.shootingRandom = shootingRandom;
 		this.drawManager = Core.getDrawManager();
 		this.logger = Core.getLogger();
 		this.enemyShips = new ArrayList<List<EnemyShip>>();
@@ -463,20 +489,28 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	}
 
 	/**
-	 * Shoots a bullet downwards.
+	 * Fires downwards, occasionally adding two diagonal bullets in later stages.
 	 * 
 	 * @param bullets
 	 *            Bullets set to add the bullet being shot.
 	 */
 	public final void shoot(final Set<Bullet> bullets) {
-		// For now, only ships in the bottom row are able to shoot.
-		int index = (int) (Math.random() * this.shooters.size());
-		EnemyShip shooter = this.shooters.get(index);
+		if (this.shooters.isEmpty() || this.shootingCooldown == null
+				|| !this.shootingCooldown.checkFinished())
+			return;
 
-		if (this.shootingCooldown.checkFinished()) {
-			this.shootingCooldown.reset();
-			bullets.add(BulletPool.getBullet(shooter.getPositionX()
-					+ shooter.width / 2, shooter.getPositionY(), BULLET_SPEED));
+		this.shootingCooldown.reset();
+		EnemyShip shooter = this.shooters.get(
+				this.shootingRandom.nextInt(this.shooters.size()));
+		int startX = shooter.getPositionX() + shooter.width / 2;
+		int startY = shooter.getPositionY();
+		bullets.add(BulletPool.getBullet(startX, startY, BULLET_SPEED));
+		if (this.spreadChance > 0 && this.shootingRandom.nextDouble() < this.spreadChance) {
+			for (int speedX : new int[] {-SPREAD_SPEED_X, SPREAD_SPEED_X}) {
+				Bullet bullet = BulletPool.getBullet(startX, startY, SPREAD_SPEED_Y);
+				bullet.setSpeedX(speedX);
+				bullets.add(bullet);
+			}
 		}
 	}
 

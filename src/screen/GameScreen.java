@@ -369,7 +369,7 @@ public class GameScreen extends Screen {
 					? new MidBoss(this.width / 2 - 16, 60, DrawManager.SpriteType.MidBoss1)
 					: new FinalBoss(this.width / 2 - 24, 60, DrawManager.SpriteType.FinalBoss1);
 		} else {
-			this.enemyShipFormation = new EnemyShipFormation(this.gameSettings);
+			this.enemyShipFormation = new EnemyShipFormation(this.gameSettings, this.level);
 			this.enemyShipFormation.attach(this);
 		}
 		// Skin chosen in Customize (GoG - Currency System).
