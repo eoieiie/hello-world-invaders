@@ -282,6 +282,8 @@ public class GameScreen extends Screen {
 	private boolean paused;
 	/** Wall-clock time when the current pause began. */
 	private long pauseStartedAt;
+	/** Whether the player chose Quit to menu from the pause menu. */
+	private boolean quitToMenu;
 	/** Debounces the pause key so holding it doesn't toggle every frame. */
 	private Cooldown pauseKeyCooldown;
 	/** Debounces cursor moves in the pause menu. */
@@ -827,12 +829,10 @@ public class GameScreen extends Screen {
 				restartLevel();
 				break;
 			case QUIT:
-				// No dedicated "abandon" path exists in the screen flow,
-				// but ending the run the same way running out of lives
-				// does takes us straight to the existing score screen,
-				// which already offers "back to menu" / "play again".
-				this.lives = 0;
-				this.paused = false;
+				// Ends the screen at once. Core sees isQuitToMenu() and goes
+				// back to the main menu without the score screen.
+				this.quitToMenu = true;
+				this.isRunning = false;
 				break;
 			default:
 				break;
@@ -1402,6 +1402,13 @@ public class GameScreen extends Screen {
 		int distanceY = Math.abs(centerAY - centerBY);
 
 		return distanceX < maxDistanceX && distanceY < maxDistanceY;
+	}
+
+	/**
+	 * @return Whether the player quit the run from the pause menu.
+	 */
+	public final boolean isQuitToMenu() {
+		return this.quitToMenu;
 	}
 
 	/**
