@@ -3,6 +3,7 @@ package entity;
 import java.awt.Color;
 
 import engine.DrawManager.SpriteType;
+import engine.HitFlash;
 
 /**
  * Implements a generic game entity.
@@ -24,6 +25,8 @@ public class Entity {
 	private Color color;
 	/** Sprite type assigned to the entity. */
 	protected SpriteType spriteType;
+	/** Short flash shown when the entity is hit but not destroyed. */
+	private final HitFlash hitFlash = new HitFlash();
 
 	/**
 	 * Constructor, establishes the entity's generic properties.
@@ -55,6 +58,15 @@ public class Entity {
 	 */
 	public final Color getColor() {
 		return color;
+	}
+	/** Starts a short hit flash on the entity. */
+	public final void flash() {
+		this.hitFlash.trigger(System.currentTimeMillis());
+	}
+
+	/** @return Whether the entity is flashing from a recent hit. */
+	public final boolean isFlashing() {
+		return this.hitFlash.isActive(System.currentTimeMillis());
 	}
 	/**
  	* AUTHORED BY: VFX TEAM (effection)

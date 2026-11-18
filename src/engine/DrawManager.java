@@ -416,8 +416,10 @@ public final class DrawManager {
 			}
 		} else {
 			// Ships and straight enemy bullets need no transform copy.
-			drawSprite(entity.getSpriteType(), positionX, positionY,
-					entity.getColor());
+			// A ship or boss that was just hit flashes for a moment.
+			Color color = entity.isFlashing() ? HitFlash.COLOR
+					: entity.getColor();
+			drawSprite(entity.getSpriteType(), positionX, positionY, color);
 		}
 
 		g2d.setComposite(AlphaComposite.SrcOver); // back to normal
