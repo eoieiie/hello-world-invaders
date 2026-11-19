@@ -1069,6 +1069,7 @@ public class GameScreen extends Screen {
 			this.particles.add(Particle.debris(centerX, centerY,
 					entity.getColor(), this.debrisRandom));
 	}
+
 	/**
 	 * Moves the sparkles and removes the ones that faded away or left the
 	 * play area. Called every frame, outside the levelFinished gate, so

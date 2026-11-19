@@ -417,7 +417,6 @@ public final class DrawManager {
 		} else {
 			// Ships and straight enemy bullets need no transform copy.
 			// A boss that was just hit flashes for a moment.
-
 			Color color = entity.isFlashing() ? HitFlash.COLOR
 					: entity.getColor();
 			drawSprite(entity.getSpriteType(), positionX, positionY, color);
