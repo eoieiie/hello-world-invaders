@@ -338,6 +338,21 @@ public final class DrawManager {
 	}
 
 	/**
+	 * Draws the coloured space background for a level. Call it right after
+	 * initDrawing, before anything else.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param level
+	 *            Current level number.
+	 */
+	public void drawLevelBackground(final Screen screen, final int level) {
+		LevelBackground.draw((Graphics2D) backBufferGraphics,
+				screen.getWidth(), screen.getHeight(), level,
+				System.currentTimeMillis());
+	}
+
+	/**
 	 * AUTHORED BY: VFX TEAM (Effection)
 	 *
 	 * Moves everything drawn after this call by the given offset.
