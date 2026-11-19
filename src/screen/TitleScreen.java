@@ -247,7 +247,7 @@ public class TitleScreen extends Screen {
 	 */
 	private String keyHints() {
 		if (this.showingExitConfirm)
-			return "arrows to choose, space ok, esc cancel";
+			return "arrows choose, space ok, esc cancel";
 
 		return "w+s/arrows move, space select, esc exit";
 	}
