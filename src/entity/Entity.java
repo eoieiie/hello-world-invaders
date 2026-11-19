@@ -59,6 +59,7 @@ public class Entity {
 	public final Color getColor() {
 		return color;
 	}
+
 	/** Starts a short hit flash on the entity. */
 	public final void flash() {
 		this.hitFlash.trigger(System.currentTimeMillis());
@@ -68,6 +69,7 @@ public class Entity {
 	public final boolean isFlashing() {
 		return this.hitFlash.isActive(System.currentTimeMillis());
 	}
+
 	/**
  	* AUTHORED BY: VFX TEAM (effection)
  	*
