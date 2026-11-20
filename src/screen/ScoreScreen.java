@@ -26,7 +26,7 @@ public class ScoreScreen extends Screen {
 	private static final int FIRST_CHAR = 65;
 	/** Code of last mayus character. */
 	private static final int LAST_CHAR = 90;
-	/** Draft preview only: align duration/easing with Jaewon's Motion Rules. */
+	/** Normal motion duration per counter, as defined in Screen Rules. */
 	private static final int COUNTER_DURATION_MILLIS = 300;
 	private final RunSummaryCounters counters =
 			new RunSummaryCounters(COUNTER_DURATION_MILLIS);

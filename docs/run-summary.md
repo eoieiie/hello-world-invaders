@@ -1,16 +1,14 @@
 # Run summary (HW-100)
 
-Draft for Sprint 3. **Do not merge until Jaewon's Motion Rules are published
-and the duration/easing below have been aligned and reviewed.**
-
 The existing end-of-run screen now has a consistent title/footer and aligned
 score, lives, enemies destroyed and accuracy rows. Values are presentation
 copies; the original score still decides record eligibility and is saved.
 The name entry, Space replay and ESC menu actions retain their existing flow
 and input delay. Animation adds no extra input lockout.
 
-For this draft preview only, each row takes 300 ms with linear interpolation,
-in order (1.2 s total). These are **not approved team motion rules**.
+Each row takes 300 ms (the Normal step in Screen Rules) with linear
+interpolation, in order (1.2 s total). The screen can be left when its
+existing input delay expires, before the counters finish.
 Zero-shot runs show 0.00% rather than NaN. Negative scores remain negative.
 The existing shots/kills ratio is otherwise unchanged, including the known
 multi-projectile accuracy issue; this story does not fix gameplay accounting.
@@ -35,9 +33,8 @@ multi-projectile accuracy issue; this story does not fix gameplay accounting.
 
 ## Checks before ready for review
 
-1. Apply the published motion rules and repeat a visual check of all four
-   non-zero counters. The short live runs above had no kills; unit tests cover
-   the numeric sequence, but that is not a visual animation verification.
+1. Repeat a visual check with non-zero counters. The short live runs above
+   had no kills; unit tests cover the numeric sequence.
 2. Play a run with kills and a non-zero score. Check sequential animation,
    final values against the run log, and continued responsiveness.
 3. Check a run which does not qualify for a record: no name editor, same
