@@ -1,6 +1,7 @@
 package entity;
 
 import java.awt.Color;
+import java.util.Random;
 
 /** A tiny sparkle that flies outward and fades away. */
 public class Particle {
@@ -11,6 +12,10 @@ public class Particle {
     private Color color;
     private long born;               // creation time
     private int lifetime;            // milliseconds
+    private float gravity;           // added to speedY each frame (debris)
+
+    /** Pull that makes debris fall, in pixels per frame per frame. */
+    static final float DEBRIS_GRAVITY = 0.15f;
 
     public Particle(final float x, final float y, final Color color) {
         double angle = Math.random() * Math.PI * 2;      // random direction
@@ -25,12 +30,33 @@ public class Particle {
         this.lifetime = 400 + (int) (Math.random() * 300);
     }
 
+    /**
+     * A larger piece of debris that is thrown up and then falls, for ship
+     * and boss explosions.
+     *
+     * @param x      Start position.
+     * @param y      Start position.
+     * @param color  Colour of the exploding ship.
+     * @param random Source of the random direction, size and lifetime.
+     * @return New debris piece.
+     */
+    public static Particle debris(final float x, final float y,
+            final Color color, final Random random) {
+        Particle debris = new Particle(x, y, color);
+        debris.speedX = (random.nextFloat() - 0.5f) * 4f;  // -2 to 2
+        debris.speedY = -(1f + random.nextFloat() * 2f);   // 1 to 3 upward
+        debris.size = 3 + random.nextInt(2);               // 3 or 4 px
+        debris.gravity = DEBRIS_GRAVITY;
+        debris.lifetime = 700 + random.nextInt(300);
+        return debris;
+    }
+
     /** Moves the particle; it slows down a little each frame. */
     public final void update() {
         this.x += this.speedX;
         this.y += this.speedY;
         this.speedX *= 0.96f;
-        this.speedY *= 0.96f;
+        this.speedY = this.speedY * 0.96f + this.gravity;
     }
 
     /** 1 when new, 0 when fully faded. */
