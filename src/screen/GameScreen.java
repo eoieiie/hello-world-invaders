@@ -300,6 +300,7 @@ public class GameScreen extends Screen {
 	private Cooldown pauseSelectionCooldown;
 	/** Ignores a Space held from gameplay until it is released (HW-66). */
 	private final KeyReleaseGate pauseConfirmGate = new KeyReleaseGate();
+	private final KeyReleaseGate gameOverSkipGate = new KeyReleaseGate();
 	/** Option the cursor is on in the pause menu. */
 	private PauseOption pauseSelection;
 	/** Score the level started with, restored by "Restart". */
@@ -606,7 +607,12 @@ public class GameScreen extends Screen {
 		if (this.lives == 0 && !this.levelFinished)
 			startGameOverSequence();
 		if (this.gameOverActive) {
-			updateGameOverSequence();
+			if (this.gameOverSkipGate.accept(inputManager.isKeyDown(KeyEvent.VK_SPACE))) {
+				this.logger.info("Skipping game over animation.");
+				this.isRunning = false;
+			} else {
+				updateGameOverSequence();
+			}
 			return;
 		}
 
@@ -664,6 +670,7 @@ public class GameScreen extends Screen {
 		SoundManager.getInstance().playSfx(Sound.GAME_OVER);
 		this.levelFinished = true;
 		this.gameOverActive = true;
+		this.gameOverSkipGate.close();
 
 		// Shows the player ship explosion; it stays since the ship is no
 		// longer updated.
@@ -1023,6 +1030,8 @@ public class GameScreen extends Screen {
 			drawShrinkingEnemies();
 		if (this.showGameOverText)
 			drawGameOverSequence();
+		if (this.gameOverActive && !this.paused)
+			drawManager.drawKeyHints(this, "space skip to results");
 
 		// Draw the notification after every gameplay and HUD element.
 		if (this.unlockedAchievement != null)
