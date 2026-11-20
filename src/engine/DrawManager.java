@@ -4,6 +4,7 @@ import java.awt.AlphaComposite;
 import java.awt.Graphics2D;
 import entity.EnemyShip;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.FontMetrics;
@@ -333,6 +334,19 @@ public final class DrawManager {
 	 */
 	public void completeDrawing(final Screen screen) {
 		setWorldOffset(0, 0);
+
+		double alpha = ScreenTransition
+				.overlayAlpha(System.currentTimeMillis());
+		if (alpha > 0) {
+			Graphics2D g = (Graphics2D) backBufferGraphics;
+			Composite previous = g.getComposite();
+			g.setComposite(AlphaComposite.getInstance(
+					AlphaComposite.SRC_OVER, (float) alpha));
+			g.setColor(Color.BLACK);
+			g.fillRect(0, 0, screen.getWidth(), screen.getHeight());
+			g.setComposite(previous);
+		}
+
 		graphics.drawImage(backBuffer, frame.getInsets().left,
 				frame.getInsets().top, frame);
 	}
