@@ -20,7 +20,7 @@ public final class LevelBackground {
     }
 
     /** Pixels the stars move down per second. */
-    private static final double STAR_SPEED = 12;
+    private static final double STAR_SPEED = 35;
 
     private static final Map<Theme, BufferedImage> BASES = new EnumMap<>(Theme.class);
     private static final Map<Theme, BufferedImage> STARS = new EnumMap<>(Theme.class);
@@ -65,9 +65,23 @@ public final class LevelBackground {
         BufferedImage base = BASES.computeIfAbsent(theme, t -> paintBase(t, width, height));
         BufferedImage stars = STARS.computeIfAbsent(theme, t -> paintStars(t, width, height));
         g.drawImage(base, 0, 0, null);
-        int offset = (int) (millis / 1000.0 * STAR_SPEED) % height;
+        int offset = starOffset(millis, height);
         g.drawImage(stars, 0, offset - height, null);
         g.drawImage(stars, 0, offset, null);
+    }
+
+    /**
+     * How far the star layer has moved down, wrapped to the screen height.
+     * The pixel count is kept as a long because current time in
+     * milliseconds does not fit in an int.
+     *
+     * @param millis Current time.
+     * @param height Screen height.
+     * @return Offset from 0 to height - 1.
+     */
+    static int starOffset(final long millis, final int height) {
+        long pixels = (long) (millis / 1000.0 * STAR_SPEED);
+        return (int) (pixels % height);
     }
 
     private static BufferedImage paintBase(final Theme theme, final int w, final int h) {

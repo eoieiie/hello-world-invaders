@@ -2,6 +2,7 @@ package engine;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -47,11 +48,27 @@ class LevelBackgroundTest {
     }
 
     @Test
+    void starsMoveWithARealClock() {
+        long now = 1_795_000_000_000L;
+        int start = LevelBackground.starOffset(now, 720);
+        int later = LevelBackground.starOffset(now + 5000, 720);
+        assertEquals(175, Math.floorMod(later - start, 720));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0", "1795000000000", "9223372036854"})
+    void starOffsetStaysOnScreen(long millis) {
+        int offset = LevelBackground.starOffset(millis, 720);
+        assertTrue(offset >= 0 && offset < 720);
+    }
+
+    @Test
     void starsDriftButTheScreenStaysCovered() {
+        long now = 1_795_000_000_000L;
         BufferedImage a = new BufferedImage(100, 120, BufferedImage.TYPE_INT_RGB);
         BufferedImage b = new BufferedImage(100, 120, BufferedImage.TYPE_INT_RGB);
-        LevelBackground.draw(a.createGraphics(), 100, 120, 1, 0);
-        LevelBackground.draw(b.createGraphics(), 100, 120, 1, 5000);
+        LevelBackground.draw(a.createGraphics(), 100, 120, 1, now);
+        LevelBackground.draw(b.createGraphics(), 100, 120, 1, now + 5000);
         int changed = 0;
         for (int x = 0; x < 100; x++) {
             for (int y = 0; y < 120; y++) {
