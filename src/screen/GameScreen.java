@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Set;
 
 import engine.soundEngine.Sound;
@@ -29,6 +30,7 @@ import engine.GameEvents;
 import engine.GlitchEffect;
 import engine.PurchaseManager;
 import engine.MeteorManager;
+import engine.RespawnBlink;
 import engine.ScreenShake;
 import engine.PointsEffect;
 import engine.PlayerSounds;
@@ -231,6 +233,14 @@ public class GameScreen extends Screen {
 	private boolean levelFinished;
 	/** Sparkles from destroyed ships. AUTHORED BY: VFX TEAM (Effection) */
 	private List<Particle> particles = new ArrayList<Particle>();
+	/** Debris pieces thrown when the player ship explodes. */
+	private static final int SHIP_DEBRIS = 10;
+	/** Debris pieces thrown when a boss explodes. */
+	private static final int BOSS_DEBRIS = 18;
+	/** Random source for debris directions. */
+	private final Random debrisRandom = new Random();
+	/** Time the player ship was last hit, for its recovery blink. */
+	private long shipHitAt;
 	/** Colors the sparkles can have. AUTHORED BY: VFX TEAM (Effection) */
 	private static final Color[] SPARKLE_COLORS = { Color.WHITE,
 			Color.YELLOW, Color.ORANGE, Color.CYAN };
@@ -895,9 +905,19 @@ public class GameScreen extends Screen {
 				this.ghostTrail.draw(drawManager, this.ship,
 						this.skin.colorAt(System.currentTimeMillis()),
 						engine.GhostTrail.isBoosting(this.items));
-			if (!warping)
-				drawManager.drawEntity(this.ship, this.ship.getPositionX(),
-						this.ship.getPositionY());
+			if (!warping) {
+				if (this.ship.isDestroyed() && this.lives > 0) {
+					// A hit that was not the last life: the ship blinks
+					// instead of showing the wreck, since it comes back.
+					if (RespawnBlink.isVisible(System.currentTimeMillis()
+							- this.shipHitAt))
+						drawManager.drawSprite(this.ship.getIdleSprite(),
+								this.ship.getPositionX(),
+								this.ship.getPositionY(), this.ship.getColor());
+				} else
+					drawManager.drawEntity(this.ship, this.ship.getPositionX(),
+							this.ship.getPositionY());
+			}
 			drawManager.drawWarpIn(this.warpIn, this.ship,
 					this.skin.colorAt(System.currentTimeMillis()),
 					SEPARATION_LINE_HEIGHT);
@@ -1034,6 +1054,23 @@ public class GameScreen extends Screen {
 	}
 
 	/**
+	 * Throws debris pieces out of an exploding ship or boss. They share the
+	 * sparkle list, so they are moved, drawn and removed the same way.
+	 *
+	 * @param entity
+	 *            Ship or boss that exploded.
+	 * @param count
+	 *            Number of debris pieces.
+	 */
+	private void spawnDebris(final Entity entity, final int count) {
+		float centerX = entity.getPositionX() + entity.getWidth() / 2f;
+		float centerY = entity.getPositionY() + entity.getHeight() / 2f;
+		for (int i = 0; i < count; i++)
+			this.particles.add(Particle.debris(centerX, centerY,
+					entity.getColor(), this.debrisRandom));
+	}
+
+	/**
 	 * Moves the sparkles and removes the ones that faded away or left the
 	 * play area. Called every frame, outside the levelFinished gate, so
 	 * sparkles keep fading after a level ends instead of piling up.
@@ -1077,6 +1114,8 @@ public class GameScreen extends Screen {
 					if (!this.ship.isDestroyed()
 							&& !this.items.tryBlockHit()) { // Shield item (Team CS)
 						this.ship.destroy();
+						this.shipHitAt = System.currentTimeMillis();
+						spawnDebris(this.ship, SHIP_DEBRIS);
 						this.lives--;
                         PlayerSounds.playHit(this.lives); // <-- Ajout du son
 						this.tookDamage = true; // Survivor tiers (Mantis)
@@ -1091,9 +1130,12 @@ public class GameScreen extends Screen {
 							&& !this.midBoss.isDestroyed()
 							&& checkCollision(bullet, (Entity) this.midBoss)) {
 						this.score += this.midBoss.manageCollisionsBoss(bullet);
+						if (!this.midBoss.isDestroyed())
+							((Entity) this.midBoss).flash();
 						if (this.midBoss.isDestroyed()) {
 							this.shipsDestroyed++;
 							this.screenShake.trigger();
+							spawnDebris((Entity) this.midBoss, BOSS_DEBRIS);
 							showUnlockedAchievement(Core.getAchievementManager()
 									.recordBossDefeated());
 							showUnlockedAchievement(Core.getAchievementManager()
