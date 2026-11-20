@@ -154,6 +154,53 @@ public final class Core {
 				LOGGER.info("Closing title screen.");
 				break;
 			case 2:
+				boolean backToMenu = false;
+
+				while (true) {
+					ModeSelectScreen modeScreen =
+							new ModeSelectScreen(width, height, FPS);
+
+					currentScreen = modeScreen;
+					returnCode = frame.setScreen(modeScreen);
+
+					if (returnCode != 2) {
+						backToMenu = true;
+						break;
+					}
+
+					if (!modeScreen.isPracticeMode()) {
+						break;
+					}
+
+					int bossLevel = modeScreen.getBossLevel();
+					GameState bossState =
+							new GameState(bossLevel, 0, MAX_LIVES, 0, 0, 0);
+
+					GameScreen bossScreen = new GameScreen(
+							bossState,
+							gameSettings.get(bossLevel - 1),
+							false,
+							width, height, FPS,
+							true
+					);
+
+					currentScreen = bossScreen;
+					frame.setScreen(bossScreen);
+
+					if (bossScreen.isQuitToMenu()) {
+						returnCode = 1;
+						backToMenu = true;
+						break;
+					}
+
+					GameState bossResult = bossScreen.getGameState();
+					bossResult = settlePendingDiamonds(bossResult);
+				}
+
+				if (backToMenu) {
+					break;
+				}
+
 				// Practice first; ESC returns to the menu without starting a run.
 				if (startLevel == 1) {
 					currentScreen = new TutorialScreen(width, height, FPS);
@@ -256,38 +303,6 @@ public final class Core {
 						+ " ship select screen at " + FPS + " fps.");
 				returnCode = frame.setScreen(currentScreen);
 				LOGGER.info("Closing ship select screen.");
-				break;
-			case 8:
-				// Mode select.
-				currentScreen = new ModeSelectScreen(width, height, FPS);
-				returnCode = frame.setScreen(currentScreen);
-				break;
-			case 9:
-				// Boss challenge.
-				int bossLevel = ModeSelectScreen.bossLevel;
-
-				GameState bossState = new GameState(
-					bossLevel,
-					gameState.getScore(),
-					gameState.getLivesRemaining(),
-					gameState.getBulletsShot(),
-					gameState.getShipsDestroyed(),
-					gameState.getPendingDiamonds(),
-					gameState.getLevelsCompletedRun(),
-                    gameState.getCoinsCollected()
-				);
-
-				currentScreen = new GameScreen(
-					bossState,
-					gameSettings.get(bossLevel - 1),
-					false,
-					width, height, FPS, true
-				);
-
-				frame.setScreen(currentScreen);
-				GameState bossResult = ((GameScreen) currentScreen).getGameState();
-				settlePendingDiamonds(bossResult);
-				returnCode = 8;
 				break;
 			default:
 				// No screen for this code yet - back to the menu instead of

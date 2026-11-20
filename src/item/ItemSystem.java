@@ -96,7 +96,7 @@ public final class ItemSystem {
 
     /** Creates fresh item state for a boss challenge using the currently equipped item. */
     public static ItemSystem newPracticeRun() {
-    return new ItemSystem(new Random());
+        return new ItemSystem(new Random());
     }
 
     // --- Equipped items: owned and equipped outside a run, at most one equipped, used from the next run on. ---

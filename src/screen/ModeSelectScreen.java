@@ -3,15 +3,15 @@ package screen;
 import java.awt.event.KeyEvent;
 import engine.Core;
 import engine.Cooldown;
+import engine.soundEngine.Sound;
+import engine.soundEngine.SoundManager;
 
 /**
  * Lets the player choose normal play or a boss challenge after selecting Play.
  */
 public final class ModeSelectScreen extends Screen {
 
-    public static final int SCREEN_CODE = 8;
-
-    public static int bossLevel = 5;
+    private int bossLevel;
 
     private static final String[] OPTIONS = {
         "Normal Play",
@@ -19,11 +19,13 @@ public final class ModeSelectScreen extends Screen {
         "Boss Challenge : stage 10"
     };
 
-    private static final int[] NEXT_SCREEN_CODES = {
-        2,
-        9,
-        9
-    };
+    public boolean isPracticeMode() {
+        return bossLevel != 0;
+    }
+
+    public int getBossLevel() {
+        return bossLevel;
+    }
 
     /** Selected option: 0 = normal play, 1 = stage 5 boss, 2 = stage 10 boss. */
     private int selectedIndex;
@@ -40,7 +42,9 @@ public final class ModeSelectScreen extends Screen {
     @Override
     public void initialize() {
         super.initialize();
+        SoundManager.getInstance().playBgm(Sound.BGM_TITLE);
 
+        bossLevel = 0;
         selectedIndex = 0;
         returnCode = 1;
 
@@ -73,13 +77,10 @@ public final class ModeSelectScreen extends Screen {
                     selectionCooldown.reset();
 
                 } else if (isConfirmDown()) {
-                    if (selectedIndex == 1) {
-                        bossLevel = 5;
-                    } else if (selectedIndex == 2) {
-                        bossLevel = 10;
-                    }
+                    bossLevel = selectedIndex == 1 ? 5
+                            : selectedIndex == 2 ? 10 : 0;
 
-                    finish(NEXT_SCREEN_CODES[selectedIndex]);
+                    finish(2);
                 }
             }
         }
@@ -113,7 +114,7 @@ public final class ModeSelectScreen extends Screen {
     private void draw() {
         drawManager.initDrawing(this);
 
-        drawManager.drawScreenTitle(this, "Select Mode");
+        drawManager.drawScreenTitle(this, "Select mode");
 
         int firstRowY = height / 2;
         int rowSpacing = 50;
@@ -128,7 +129,7 @@ public final class ModeSelectScreen extends Screen {
 
         drawManager.drawKeyHints(
                 this,
-                "W/S or arrows move, Enter/Space select, Esc back");
+                "w+s/arrows move, enter/space select, esc back");
 
         drawManager.completeDrawing(this);
     }
