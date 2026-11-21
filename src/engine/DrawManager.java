@@ -881,6 +881,8 @@ public final class DrawManager {
 	private static final int SCORE_ZONE_MARGIN = 8;
 	/** Horizontal gap between the "SCORE" label and the value. */
 	private static final int SCORE_LABEL_GAP = 8;
+	/** Baseline shared by the score value and its glow. */
+	private static final int SCORE_TEXT_Y = 25;
 
 	/**
 	 * Draws the current score in the top-right corner, arcade-style: no
@@ -894,8 +896,19 @@ public final class DrawManager {
 	 *            Current score.
 	 */
 	public void drawScore(final Screen screen, final int score) {
-		int textY = 25;
+		drawScore(screen, score, 0);
+	}
 
+	/**
+	 * Draws the score with a fading green glow around its digits only.
+	 * The value and its right-aligned position stay unchanged.
+	 *
+	 * @param screen Screen to draw on.
+	 * @param score Current score.
+	 * @param glow Strength of the green glow, from 0 to 1.
+	 */
+	public void drawScore(final Screen screen, final int score,
+			final float glow) {
 		backBufferGraphics.setFont(fontRegular);
 		String label = "SCORE";
 		String scoreString = Integer.toString(score);
@@ -906,26 +919,55 @@ public final class DrawManager {
 		int labelX = scoreX - SCORE_LABEL_GAP - labelWidth;
 
 		backBufferGraphics.setColor(Color.WHITE);
-		backBufferGraphics.drawString(label, labelX, textY);
+		backBufferGraphics.drawString(label, labelX, SCORE_TEXT_Y);
 
+		if (glow > 0) {
+			Graphics2D g = (Graphics2D) backBufferGraphics;
+			Composite previous = g.getComposite();
+			try {
+				g.setComposite(AlphaComposite.getInstance(
+						AlphaComposite.SRC_OVER, Math.min(1f, glow)));
+				g.setColor(Color.GREEN);
+				g.drawString(scoreString, scoreX - 1, SCORE_TEXT_Y);
+				g.drawString(scoreString, scoreX + 1, SCORE_TEXT_Y);
+				g.drawString(scoreString, scoreX, SCORE_TEXT_Y - 1);
+				g.drawString(scoreString, scoreX, SCORE_TEXT_Y + 1);
+			} finally {
+				g.setComposite(previous);
+			}
+		}
 		backBufferGraphics.setColor(Color.GREEN);
-		backBufferGraphics.drawString(scoreString, scoreX, textY);
+		backBufferGraphics.drawString(scoreString, scoreX, SCORE_TEXT_Y);
 	}
 
-	/**
-	 * Draws number of remaining lives on screen.
-	 *
-	 * @param screen
-	 *            Screen to draw on.
-	 * @param lives
-	 *            Current lives.
-	 */
 	/** Horizontal space reserved for the "LIVES" label. */
 	private static final int LIVES_LABEL_WIDTH = 46;
 	/** Horizontal space reserved per life icon. */
 	private static final int LIVES_ICON_SPACING = 35;
+	/** Top of the life icons and their loss outline. */
+	private static final int LIVES_ICON_Y = 10;
 
+	/**
+	 * Draws remaining lives without a loss response.
+	 *
+	 * @param screen Screen to draw on.
+	 * @param lives Current life count.
+	 */
 	public void drawLives(final Screen screen, final int lives) {
+		drawLives(screen, lives, -1, 0);
+	}
+
+	/**
+	 * Draws remaining icons and a temporary red outline where one vanished.
+	 * Both use the selected ship shape and the same icon position formula.
+	 *
+	 * @param screen Screen to draw on.
+	 * @param lives Current life count.
+	 * @param lostIndex Index of the removed icon, or -1.
+	 * @param outlineAlpha Opacity of the removed icon outline.
+	 */
+	public void drawLives(final Screen screen, final int lives,
+			final int lostIndex, final float outlineAlpha) {
 		backBufferGraphics.setFont(fontRegular);
 		backBufferGraphics.setColor(Color.WHITE);
 		backBufferGraphics.drawString("LIVES", 20, 25);
@@ -936,8 +978,49 @@ public final class DrawManager {
 				.getSelectedShape(dummyShip.getType());
 		dummyShip.setShapeSprite(shape == null ? null : shape.getSprite());
 		for (int i = 0; i < lives; i++)
-			drawEntity(dummyShip, 20 + LIVES_LABEL_WIDTH
-					+ LIVES_ICON_SPACING * i, 10);
+			drawEntity(dummyShip, lifeIconX(i), LIVES_ICON_Y);
+		if (lostIndex >= 0 && outlineAlpha > 0)
+			drawLifeOutline(dummyShip.getIdleSprite(),
+					lifeIconX(lostIndex), LIVES_ICON_Y, outlineAlpha);
+	}
+
+	/**
+	 * @param index Zero-based life icon index.
+	 * @return Horizontal position shared by an icon and its loss outline.
+	 */
+	private static int lifeIconX(final int index) {
+		return 20 + LIVES_LABEL_WIDTH + LIVES_ICON_SPACING * index;
+	}
+
+	/**
+	 * Draws only boundary pixels of the selected ship sprite.
+	 *
+	 * @param sprite Selected ship sprite.
+	 * @param x Left edge of the lost icon.
+	 * @param y Top edge of the lost icon.
+	 * @param alpha Outline opacity, from 0 to 1.
+	 */
+	private void drawLifeOutline(final SpriteType sprite, final int x,
+			final int y, final float alpha) {
+		boolean[][] pixels = spriteMap.get(sprite);
+		if (pixels == null)
+			return;
+		Graphics2D g = (Graphics2D) backBufferGraphics;
+		Composite previous = g.getComposite();
+		try {
+			g.setComposite(AlphaComposite.getInstance(
+					AlphaComposite.SRC_OVER, Math.min(1f, alpha)));
+			g.setColor(Color.RED);
+			for (int i = 0; i < pixels.length; i++)
+				for (int j = 0; j < pixels[i].length; j++)
+					if (pixels[i][j] && (i == 0 || !pixels[i - 1][j]
+							|| i == pixels.length - 1 || !pixels[i + 1][j]
+							|| j == 0 || !pixels[i][j - 1]
+							|| j == pixels[i].length - 1 || !pixels[i][j + 1]))
+						g.fillRect(x + i * 2, y + j * 2, 2, 2);
+		} finally {
+			g.setComposite(previous);
+		}
 	}
 
 	/** Baseline Y of the top-centre level indicator, kept off y=25 so it
