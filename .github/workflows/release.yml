@@ -5,8 +5,7 @@ name: Release
 # `java -jar Invaders.jar`, without cloning or compiling. That is what we hand
 # over in week 9, and it lets a reviewer try main without building it.
 #
-# res/font.ttf is gitignored, so CI does not have it and the jar draws text in
-# a default monospaced font until an openly licensed font is committed.
+# The JAR includes the Silkscreen font and its license from res/silkscreen.
 
 on:
   push:
@@ -61,4 +60,4 @@ jobs:
             --target "$GITHUB_SHA" \
             --prerelease \
             --title "Latest build from main" \
-            --notes "Built from ${GITHUB_SHA::7}. Download Invaders.jar and run: java -jar Invaders.jar (Java 17 or newer). High scores are saved next to the jar. Text uses a default font until the project font is committed."
+            --notes "Built from ${GITHUB_SHA::7}. Download Invaders.jar and run: java -jar Invaders.jar (Java 17 or newer). High scores are saved next to the jar. The Silkscreen font is bundled."
