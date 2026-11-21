@@ -81,10 +81,12 @@ public final class HudFeedback {
 
 	/**
 	 * @param now Current game clock time, in milliseconds.
-	 * @return Lost-life outline opacity from 1 to 0.
+	 * @return Full opacity during the impact step, then zero.
 	 */
 	public float lostLifeAlpha(final long now) {
-		return remaining(now, this.lifeStartedAt, LIFE_DURATION);
+		return this.lifeStartedAt >= 0
+				&& now >= this.lifeStartedAt
+				&& now - this.lifeStartedAt < LIFE_DURATION ? 1f : 0f;
 	}
 
 	/**
@@ -106,6 +108,6 @@ public final class HudFeedback {
 		if (start < 0)
 			return 0;
 		double progress = (double) (now - start) / duration;
-		return (float) (1 - Easing.easeOut(progress));
+		return (float) (1 - Easing.easeInOut(progress));
 	}
 }
