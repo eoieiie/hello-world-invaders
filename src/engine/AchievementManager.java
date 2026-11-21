@@ -599,6 +599,19 @@ public class AchievementManager {
 		return null;
 	}
 
+	/** @return True once the tutorial has been seen. */
+	public final boolean isTutorialSeen() {
+		return this.playerProfile.isTutorialSeen();
+	}
+
+	/** Saves that the tutorial has been seen. */
+	public final void recordTutorialSeen() {
+		if (this.playerProfile.isTutorialSeen())
+			return;
+		this.playerProfile.markTutorialSeen();
+		saveProfile();
+	}
+
 	/** Saves the player profile, retaining progress after restarting. */
 	private void saveProfile() {
 		try {

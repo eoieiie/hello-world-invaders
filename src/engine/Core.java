@@ -201,13 +201,15 @@ public final class Core {
 					break;
 				}
 
-				// Practice first; ESC returns to the menu without starting a run.
-				if (startLevel == 1) {
+				// Practice on the first run only; ESC returns to the menu.
+				AchievementManager achievements = getAchievementManager();
+				if (startLevel == 1 && !achievements.isTutorialSeen()) {
 					currentScreen = new TutorialScreen(width, height, FPS);
 					returnCode = frame.setScreen(currentScreen);
 					if (returnCode != 2) {
 						break;
 					}
+					achievements.recordTutorialSeen();
 				}
 				// Game & score.
 				boolean quitToMenu = false;
