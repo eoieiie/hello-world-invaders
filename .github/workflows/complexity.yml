@@ -1,0 +1,194 @@
+name: Method Complexity
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: method-complexity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  complexity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      PMD_VERSION: "6.55.0"
+      SOURCE_PATH: src
+      COMPLEXITY_LIMIT: "10"
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Load PMD rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          rules=.github/workflows/pmd-ruleset.xml
+          # Use the established rules once merged. On the first adoption PR,
+          # the base has no ruleset yet, so use the checked-out PR's rules.
+          if git cat-file -e "${BASE_SHA}:${rules}" 2>/dev/null; then
+            git show "${BASE_SHA}:${rules}" > "${RUNNER_TEMP}/base-pmd-ruleset.xml"
+            cp "${RUNNER_TEMP}/base-pmd-ruleset.xml" "$rules"
+          else
+            test -s "$rules"
+            echo "::notice::No base ruleset yet; using this PR's ruleset for initial adoption."
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install PMD
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" \
+            --output "${RUNNER_TEMP}/pmd.zip"
+          unzip -q "${RUNNER_TEMP}/pmd.zip" -d "${RUNNER_TEMP}"
+
+      - name: Measure method complexity
+        id: measure
+        shell: python
+        run: |
+          import json
+          import os
+          import re
+          import subprocess
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          temp = Path(os.environ["RUNNER_TEMP"])
+          source = Path(os.environ["SOURCE_PATH"])
+          limit = int(os.environ["COMPLEXITY_LIMIT"])
+          pmd = temp / f"pmd-bin-{os.environ['PMD_VERSION']}/bin/run.sh"
+          rules = Path(".github/workflows/pmd-ruleset.xml")
+          revision = f"{os.environ['BASE_SHA']}...{os.environ['HEAD_SHA']}"
+          if not source.is_dir() or not rules.is_file():
+              raise SystemExit("Source directory or PMD ruleset not found.")
+
+          changed = subprocess.check_output([
+              "git", "diff", "--name-only", "-z", "--diff-filter=ACMR",
+              revision, "--", source.as_posix(),
+          ]).decode("utf-8").split("\0")
+          files = sorted(name for name in changed if name.endswith(".java"))
+          rows, failed = [], False
+          ns = {"p": "http://pmd.sourceforge.net/report/2.0.0"}
+
+          def escape(value):
+              return str(value).replace("|", "&#124;").replace("<", "&lt;").replace(">", "&gt;")
+
+          def method_changed(begin, end, ranges):
+              for start, count in ranges:
+                  if count and start <= end and start + count - 1 >= begin:
+                      return True
+                  # A deletion is a gap after start, strictly inside the method.
+                  if count == 0 and begin <= start < end:
+                      return True
+              return False
+
+          for index, filename in enumerate(files):
+              diff = subprocess.check_output([
+                  "git", "diff", "--no-ext-diff", "--no-textconv", "--unified=0",
+                  "--no-renames", revision, "--", filename,
+              ]).decode("utf-8", errors="replace")
+              ranges = [(int(start), int(count) if count else 1) for start, count in
+                        re.findall(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", diff, re.M)]
+              if not ranges:
+                  continue
+              report = temp / f"pmd-{index}.xml"
+              subprocess.run([
+                  "bash", str(pmd), "pmd", "-d", filename, "-R", str(rules),
+                  "-f", "xml", "-r", str(report), "-language", "java",
+                  "-version", "17", "-no-cache", "-failOnViolation", "false",
+              ], check=True)
+              root = ET.parse(report).getroot()
+              if root.findall(".//p:error", ns) or root.findall(".//p:configerror", ns):
+                  raise SystemExit(ET.tostring(root, encoding="unicode"))
+
+              for violation in root.findall(".//p:violation", ns):
+                  message = " ".join("".join(violation.itertext()).split())
+                  if not message.startswith("The method "):
+                      continue
+                  begin, end = (int(violation.attrib[key]) for key in ("beginline", "endline"))
+                  if not method_changed(begin, end, ranges):
+                      continue
+                  match = re.search(r"The method '(.+)' has a cyclomatic complexity of (\d+)", message)
+                  if not match:
+                      raise SystemExit(f"Unexpected PMD message: {message}")
+                  method, complexity = match.groups()
+                  complexity = int(complexity)
+                  exceeded = complexity > limit
+                  failed = failed or exceeded
+                  label = ".".join(filter(None, [violation.get("class"), method]))
+                  rows.append(f"| {escape(filename)}:{begin} | {escape(label)} "
+                              f"| {complexity} | {'❌' if exceeded else '✅'} |")
+
+          heading = (f"## Cyclomatic Complexity by Method\n\nThreshold: **Fail if complexity is greater than {limit}**\n\n"
+                     "Scope: Only implemented methods containing changed lines in the PR (including internal deletions)\n\n")
+          table = "| File:Line | Method | Complexity | Result |\n|---|---|---:|:---:|\n"
+          bodies, body = [], heading + table
+          for row in rows:
+              if len(body) + len(row) > 50000:
+                  bodies.append(body)
+                  body = heading + table
+              body += row + "\n"
+          if not rows:
+              body = heading + "No changed implemented methods found.\n"
+          body += "\n**Result: Failed**" if failed else "\n**Result: Passed**"
+          bodies.append(body)
+          (temp / "complexity-result.json").write_text(
+              json.dumps({"comments": bodies}, ensure_ascii=False), encoding="utf-8",
+          )
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"failed={int(failed)}\n")
+
+      - name: Comment on PR
+        # Fork PR tokens cannot write comments.
+        # Do not run PR code via pull_request_target.
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const path = require("path");
+            const reportPath = path.join(process.env.RUNNER_TEMP, "complexity-result.json");
+            const result = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+            const marker = "<!-- method-complexity-report -->";
+            const repo = context.repo;
+            const params = { ...repo, issue_number: context.issue.number };
+            const comments = await github.paginate(github.rest.issues.listComments, params);
+            const previous = comments.filter(c =>
+              c.user.login === "github-actions[bot]" && c.body?.startsWith(marker)
+            ).sort((a, b) => a.id - b.id);
+            for (const [i, text] of result.comments.entries()) {
+              const body = `${marker}\n${text}`;
+              if (previous[i]) {
+                await github.rest.issues.updateComment({ ...repo, comment_id: previous[i].id, body });
+              } else {
+                await github.rest.issues.createComment({ ...params, body });
+              }
+            }
+            for (const comment of previous.slice(result.comments.length)) {
+              await github.rest.issues.deleteComment({ ...repo, comment_id: comment.id });
+            }
+
+      - name: Warn if complexity is greater than 10
+        if: ${{ !cancelled() && steps.measure.outputs.failed == '1' }}
+        run: |
+          echo "::warning::Method complexity exceeds 10. See the report for details. This check is advisory and does not fail CI."
