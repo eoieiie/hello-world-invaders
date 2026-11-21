@@ -152,27 +152,15 @@ jobs:
               body = heading + "No changed implemented methods found.\n"
           body += "\n**Result: Failed**" if failed else "\n**Result: Passed**"
           bodies.append(body)
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
-              summary.write("\n\n".join(bodies) + "\n")
           (temp / "complexity-result.json").write_text(
               json.dumps({"comments": bodies}, ensure_ascii=False), encoding="utf-8",
           )
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"failed={int(failed)}\n")
 
-      - name: Upload complexity reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: method-complexity-reports
-          path: |
-            ${{ runner.temp }}/complexity-result.json
-            ${{ runner.temp }}/pmd-*.xml
-          if-no-files-found: warn
-
       - name: Comment on PR
-        # Fork PR tokens cannot write comments; their reports remain in the
-        # job summary and artifacts. Do not run PR code via pull_request_target.
+        # Fork PR tokens cannot write comments.
+        # Do not run PR code via pull_request_target.
         if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
         uses: actions/github-script@v7
         with:
