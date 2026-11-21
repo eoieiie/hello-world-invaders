@@ -45,6 +45,7 @@ public class ScoreScreen extends Screen {
 	private int nameCharSelected;
 	/** Time between changes in user selection. */
 	private Cooldown selectionCooldown;
+	private final KeyReleaseGate replayGate = new KeyReleaseGate();
 
 	/**
 	 * Constructor, establishes the properties of the screen.
@@ -92,6 +93,7 @@ public class ScoreScreen extends Screen {
 	 * @return Next screen code.
 	 */
 	public final int run() {
+		this.replayGate.close();
 		super.run();
 
 		return this.returnCode;
@@ -103,6 +105,8 @@ public class ScoreScreen extends Screen {
 	protected final void update() {
 		super.update();
 
+		boolean replayPressed = this.replayGate.accept(
+				inputManager.isKeyDown(KeyEvent.VK_SPACE));
 		draw();
 		if (this.inputDelay.checkFinished()) {
 			if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
@@ -111,7 +115,7 @@ public class ScoreScreen extends Screen {
 				this.isRunning = false;
 				if (this.isNewRecord)
 					saveScore();
-			} else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+			} else if (replayPressed) {
 				// Play again.
 				this.returnCode = 2;
 				this.isRunning = false;

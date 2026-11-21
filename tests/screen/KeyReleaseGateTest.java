@@ -42,4 +42,28 @@ class KeyReleaseGateTest {
 		gate.close();
 		assertFalse(gate.accept(true));
 	}
+
+	@Test
+	void firingCannotSkipOrReplayUntilEachScreenSeesARelease() {
+		KeyReleaseGate skip = new KeyReleaseGate();
+		skip.close();
+		assertFalse(skip.accept(true), "the last shot is still held");
+		assertFalse(skip.accept(false));
+		assertTrue(skip.accept(true), "a fresh press skips the animation");
+
+		KeyReleaseGate replay = new KeyReleaseGate();
+		replay.close();
+		assertFalse(replay.accept(true), "the skip is still held");
+		assertFalse(replay.accept(true), "waiting does not turn it into replay");
+		assertFalse(replay.accept(false));
+		assertTrue(replay.accept(true), "a fresh results press replays");
+	}
+
+	@Test
+	void naturalGameOverLeavesReplayAvailableOnTheFirstPress() {
+		KeyReleaseGate replay = new KeyReleaseGate();
+		replay.close();
+		assertFalse(replay.accept(false));
+		assertTrue(replay.accept(true));
+	}
 }
