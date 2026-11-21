@@ -7,10 +7,7 @@ directly to Stage 1, including immediately after opening the tutorial.
 ESC returns to the main menu; it does not skip into the game.
 Practice does not award points or consume lives in the normal game. Completing
 or skipping the tutorial starts Stage 1 with the normal initial game state.
-Finishing or skipping the tutorial writes an empty `tutorial-seen` file next to
-the game, and later new games go straight to Stage 1. ESC does not count, so the
-tutorial shows again on the next new game. Delete `tutorial-seen` to see the
-tutorial again. If the file can't be written, the tutorial simply shows again.
+Finishing or skipping it is saved in `player-profile`, so later games skip it.
 
 S must be released and pressed again if held while entering from the menu.
 If S and ESC are pressed together, returning to the menu takes priority.
@@ -26,8 +23,7 @@ If S and ESC are pressed together, returning to the menu takes priority.
    and bosses. Holding SPACE must not skip this message.
 6. Press ENTER: Stage 1 begins with a fresh score and three lives.
 7. Start a new game and press ESC during the tutorial: return to the menu without
-   entering Stage 1 or the score screen. Starting again shows the tutorial again
-   from step 1.
+   entering Stage 1 or the score screen. Starting again shows the tutorial again.
 8. Move against each edge: the player must stay inside the play area.
 
 ## Skip and regression checks
@@ -46,10 +42,7 @@ when reporting a manual test; the checklist below is not a claim that it was run
 | Conflicting keys | Press S and ESC together. | Return to menu. |
 | Normal completion | Move, fire, defeat the enemy, release then press ENTER. | Existing completion path still starts Stage 1. |
 | Fresh game state | Compare a skipped run with a completed tutorial run. | Both start at Stage 1 with score 0, three lives and no practice kill/shot credit. |
-| Repeat after ESC | Press ESC, then select Play again. | Tutorial shows again from step 1; skip remains available. |
-| Repeat after finish | Finish or skip the tutorial, play out the run, then select Play again. | Stage 1 starts directly with no tutorial. |
-| Restart the game | Finish or skip, quit the game, start it again and select Play. | Stage 1 starts directly with no tutorial. |
-| Fresh install | Delete `tutorial-seen` next to `bin`, then select Play. | Tutorial shows again. |
+| Repeat | Finish or skip, then select Play again (also after restarting the game). | Stage 1 starts with no tutorial. |
 
 Capture the full tutorial window showing `S: skip to Stage 1 | ESC: menu`,
 then Stage 1 after skipping. Confirm the hint fits and remains readable.
@@ -65,11 +58,6 @@ It returns the existing start-game code (2), so Core's normal Stage 1 setup
 is reused. The existing `run()` finally block recycles practice bullets on
 both skip and menu exits. This addresses the tutorial replay feedback on
 upstream PR #90; other integration feedback is outside this change.
-
-HW-104 (first run only) adds `engine/TutorialProgress.java`, a getter in
-`FileManager`, and a check around the tutorial in `Core`. The tutorial screen
-itself is unchanged. `tests/engine/TutorialProgressTest.java` checks that a
-first run shows the tutorial, a later run skips it, and a failed save keeps it.
 
 ## Automated offscreen checks (Java 17)
 

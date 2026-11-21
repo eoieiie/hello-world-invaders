@@ -201,16 +201,15 @@ public final class Core {
 					break;
 				}
 
-				// Practice first, on the first run only; ESC returns to the
-				// menu without starting a run and keeps the tutorial for later.
-				TutorialProgress tutorial = getFileManager().getTutorialProgress();
-				if (startLevel == 1 && !tutorial.isSeen()) {
+				// Practice on the first run only; ESC returns to the menu.
+				AchievementManager achievements = getAchievementManager();
+				if (startLevel == 1 && !achievements.isTutorialSeen()) {
 					currentScreen = new TutorialScreen(width, height, FPS);
 					returnCode = frame.setScreen(currentScreen);
 					if (returnCode != 2) {
 						break;
 					}
-					tutorial.markSeen();
+					achievements.recordTutorialSeen();
 				}
 				// Game & score.
 				boolean quitToMenu = false;
