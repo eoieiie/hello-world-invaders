@@ -120,6 +120,8 @@ public class GameScreen extends Screen {
 	private static final int PAUSE_KEY_DEBOUNCE = 200;
 	/** Minimum time between two pause-menu cursor moves. */
 	private static final int PAUSE_SELECTION_DEBOUNCE = 200;
+	/** Whether the game is in practice mode. */
+	private final boolean practiceMode;
 
 	/**
 	 * Options listed in the pause menu, in the order they are drawn.
@@ -314,9 +316,20 @@ public class GameScreen extends Screen {
 	private final int initialShipsDestroyed;
 	/** Pending diamonds the level started with, restored by "Restart". */
 	private final int initialPendingDiamonds;
+	/** Number of diamonds to clear in boss practice mode. */
+	private static final int BOSS_PRACTICE_LEVEL_5_DIAMONDS = 3;
+	private static final int BOSS_PRACTICE_LEVEL_10_DIAMONDS = 5;
 
 	/** Boss encounter; normal stages use enemyShipFormation instead. */
 	private Boss midBoss;
+
+	/** Creates a normal-play screen with practice mode disabled. */
+	public GameScreen(final GameState gameState,
+			final GameSettings gameSettings, final boolean bonusLife,
+			final int width, final int height, final int fps) {
+		this(gameState, gameSettings, bonusLife,
+			width, height, fps, false);
+	}
 
 	/**
 	 * Constructor, establishes the properties of the screen.
@@ -333,10 +346,12 @@ public class GameScreen extends Screen {
 	 *            Screen height.
 	 * @param fps
 	 *            Frames per second, frame rate at which the game is run.
+	 * @param practiceMode
+	 *			  Whether this screen runs a standalone boss challenge.
 	 */
 	public GameScreen(final GameState gameState,
-					  final GameSettings gameSettings, final boolean bonusLife,
-					  final int width, final int height, final int fps) {
+					final GameSettings gameSettings, final boolean bonusLife,
+					final int width, final int height, final int fps, final boolean practiceMode) {
 		super(width, height, fps);
 
 		this.gameSettings = gameSettings;
@@ -352,7 +367,7 @@ public class GameScreen extends Screen {
 		this.levelsCompletedRun = gameState.getLevelsCompletedRun();
         this.coinsCollected = gameState.getCoinsCollected();
 		this.tookDamage = false;
-
+		this.practiceMode = practiceMode;
 
 
 		// Snapshot of how the level started, so "Restart" has something to
@@ -430,8 +445,14 @@ public class GameScreen extends Screen {
 		this.pauseSelection = PauseOption.RESUME;
 		this.pauseStartedAt = 0;
 
-		// Item System (Team CS): level 1 starts a new run, later levels keep it.
-		this.items = ItemSystem.forLevel(this.level);
+		// Item System (Team CS): initialize item state for the selected mode.
+		if (this.practiceMode) {
+			// Boss challenge: fresh item state with the currently equipped item.
+			this.items = ItemSystem.newPracticeRun();
+		} else {
+			// Normal gameplay: maintains item state between stages.
+			this.items = ItemSystem.forLevel(this.level);
+		}
 		this.items.beginLevel(this.level, this.width, this.ship,
 				new ItemSystem.GameHooks() {
 					public int getLives() { return lives; }
@@ -624,25 +645,35 @@ public class GameScreen extends Screen {
 				this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
 				SoundManager.getInstance().stopBgm();
 				SoundManager.getInstance().playSfx(Sound.VICTORY);
-				this.pendingDiamonds += this.level;
+				if (!this.practiceMode) {
+					this.pendingDiamonds += this.level;
+				} else {
+					if (this.level == 5) {
+						this.pendingDiamonds += BOSS_PRACTICE_LEVEL_5_DIAMONDS;
+					} else if (this.level == 10) {
+						this.pendingDiamonds += BOSS_PRACTICE_LEVEL_10_DIAMONDS;
+					}
+				}
 				collectRemainingCoins();
 				this.pendingDiamonds += this.meteors.collectRemaining(); // VFX TEAM (Effection): collects remaining diamonds from the meteor and adds them to pending
-				showUnlockedAchievements(Core.getAchievementManager()
-						.recordFlawlessLevelCompleted(this.tookDamage));
-				showUnlockedAchievement(Core.getAchievementManager()
-						.recordLevelCompleted(this.level));
-                showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
-
-				showUnlockedAchievement(Core.getAchievementManager()
-						.recordLevelCompleted(
-								this.level,
-								Core.getShipId(this.ship.getType()),
-								true));
-
-				// Last level cleared alive: the game is beaten.
-				if (this.level == Core.getNumLevels())
+				showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
+				if (!this.practiceMode) {
+					showUnlockedAchievements(Core.getAchievementManager()
+							.recordFlawlessLevelCompleted(this.tookDamage));
 					showUnlockedAchievement(Core.getAchievementManager()
-							.recordGameWon(Core.getSelectedShipId()));
+							.recordLevelCompleted(this.level));
+
+					showUnlockedAchievement(Core.getAchievementManager()
+							.recordLevelCompleted(
+									this.level,
+									Core.getShipId(this.ship.getType()),
+									true));
+					
+					// Last level cleared alive: the game is beaten.
+					if (this.level == Core.getNumLevels())
+						showUnlockedAchievement(Core.getAchievementManager()
+								.recordGameWon(Core.getSelectedShipId()));
+				}
 			}
 		}
 
