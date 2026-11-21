@@ -193,6 +193,9 @@ out/
 /sound-settings
 /sound-settings.tmp
 
+# Marker written once the tutorial has been finished or skipped
+/tutorial-seen
+
 # Local currency save files (per-player, never commit)
 coins
 diamonds

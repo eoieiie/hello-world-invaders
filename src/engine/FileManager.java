@@ -48,6 +48,8 @@ public final class FileManager {
 	private static final String PLAYER_PROFILE_FILE = "player-profile";
 	/** Name of the file containing persistent audio volumes. */
 	private static final String SOUND_SETTINGS_FILE = "sound-settings";
+	/** Name of the marker file written once the tutorial has been seen. */
+	private static final String TUTORIAL_SEEN_FILE = "tutorial-seen";
 	/** Name of the file the player's coin balance is persisted to. */
 	private static final String COINS_FILE = "coins";
 	/** Name of the file the player's diamond balance is persisted to. */
@@ -511,6 +513,21 @@ public final class FileManager {
 			}
 		} catch (IOException | SecurityException e) {
 			logger.warning("Couldn't save sound settings: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Returns whether the tutorial has been seen, saved next to the game.
+	 *
+	 * @return Tutorial progress backed by the tutorial-seen marker file, or by
+	 *         one in the working directory if the game folder can't be found.
+	 */
+	public TutorialProgress getTutorialProgress() {
+		try {
+			return new TutorialProgress(getSaveFile(TUTORIAL_SEEN_FILE));
+		} catch (IOException e) {
+			logger.warning("Couldn't find tutorial progress: " + e.getMessage());
+			return new TutorialProgress(new File(TUTORIAL_SEEN_FILE));
 		}
 	}
 

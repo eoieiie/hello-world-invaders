@@ -201,13 +201,16 @@ public final class Core {
 					break;
 				}
 
-				// Practice first; ESC returns to the menu without starting a run.
-				if (startLevel == 1) {
+				// Practice first, on the first run only; ESC returns to the
+				// menu without starting a run and keeps the tutorial for later.
+				TutorialProgress tutorial = getFileManager().getTutorialProgress();
+				if (startLevel == 1 && !tutorial.isSeen()) {
 					currentScreen = new TutorialScreen(width, height, FPS);
 					returnCode = frame.setScreen(currentScreen);
 					if (returnCode != 2) {
 						break;
 					}
+					tutorial.markSeen();
 				}
 				// Game & score.
 				boolean quitToMenu = false;
