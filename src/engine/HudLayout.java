@@ -93,15 +93,19 @@ public final class HudLayout {
 	}
 
 	/**
-	 * Item slots are only drawn while they hold an item.
+	 * The item slots are only drawn while the player holds an item. Then
+	 * every slot is drawn, empty ones too, so each key keeps its box.
 	 *
 	 * @param slots Inventory slots, null where a slot is empty.
 	 * @return Indexes of the slots to draw, in key order.
 	 */
 	public static List<Integer> visibleSlots(final List<?> slots) {
 		List<Integer> visible = new ArrayList<Integer>();
-		for (int i = 0; i < slots.size(); i++)
-			if (slots.get(i) != null)
+		boolean holding = false;
+		for (Object slot : slots)
+			holding |= slot != null;
+		if (holding)
+			for (int i = 0; i < slots.size(); i++)
 				visible.add(i);
 		return visible;
 	}

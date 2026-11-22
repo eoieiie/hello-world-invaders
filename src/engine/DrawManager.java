@@ -601,8 +601,8 @@ public final class DrawManager {
 		int baseline = ITEM_PANEL_TOP + ITEM_SLOT_HEIGHT - 4;
 		int boxWidth = metrics.stringWidth("WW") + 8;
 
-		// Slots: "1 [SH]" ... only while the slot holds an item (HW-118).
-		// Each slot keeps its own place, so a key's box never moves.
+		// Slots: "1 [SH]" ... only while an item is held (HW-118). Then all
+		// slots show, an empty one as a dark box, so each key keeps its box.
 		int digitWidth = metrics.stringWidth("0") + 3;
 		int slotStride = digitWidth + boxWidth + 6;
 		for (int i : HudLayout.visibleSlots(view.slots)) {
@@ -611,12 +611,15 @@ public final class DrawManager {
 			backBufferGraphics.setColor(Color.GRAY);
 			backBufferGraphics.drawString(Integer.toString(i + 1), x, baseline);
 			x += digitWidth;
-			backBufferGraphics.setColor(ItemSystem.colorOf(item.effectKind));
+			backBufferGraphics.setColor(item == null ? Color.DARK_GRAY
+					: ItemSystem.colorOf(item.effectKind));
 			backBufferGraphics.drawRect(x, ITEM_PANEL_TOP, boxWidth,
 					ITEM_SLOT_HEIGHT);
-			String label = shortItemName(item.effectKind);
-			backBufferGraphics.drawString(label, x + (boxWidth
-					- metrics.stringWidth(label)) / 2, baseline);
+			if (item != null) {
+				String label = shortItemName(item.effectKind);
+				backBufferGraphics.drawString(label, x + (boxWidth
+						- metrics.stringWidth(label)) / 2, baseline);
+			}
 		}
 
 		// Effects, right-aligned and compact: "RFx2 SH8s". The equipped item is

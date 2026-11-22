@@ -65,10 +65,12 @@ public class HudLayoutTest {
 	}
 
 	@Test
-	void itemSlotsOnlyShowWhileTheyHoldAnItem() {
+	void itemSlotsOnlyShowWhileAnItemIsHeld() {
+		// No item held: the item boxes are not drawn.
 		assertEquals(Collections.emptyList(),
 				HudLayout.visibleSlots(Arrays.asList(null, null, null)));
-		List<String> slots = Arrays.asList(null, "shield", null, "freeze");
-		assertEquals(Arrays.asList(1, 3), HudLayout.visibleSlots(slots));
+		// Holding an item: they are, empty ones included.
+		List<String> slots = Arrays.asList(null, "shield", null);
+		assertEquals(Arrays.asList(0, 1, 2), HudLayout.visibleSlots(slots));
 	}
 }
