@@ -1040,15 +1040,11 @@ public class GameScreen extends Screen {
 				this.hudFeedback.lostLifeIndex(hudNow),
 				this.hudFeedback.lostLifeAlpha(hudNow));
 		drawManager.drawLevel(this, this.level);
-		// Explicit Y (36, not the 25 default): the level indicator now
-		// sits centred at y=14, and the coin icon is tall enough that at
-		// y=25 it climbs into the level text above it. Dropping it to its
-		// own row below clears both.
-		drawManager.drawCoinBalance(this, CurrencyManager.getInstance()
-				.getCoins(), 36);
-		drawManager.drawDiamonds(this, engine.DiamondManager.getInstance()
-				.getDiamonds());
-		drawManager.drawHorizontalLine(this, SEPARATION_LINE_HEIGHT - 1);
+		// One row (HW-118): coins and diamonds sit small, left of the score.
+		drawManager.drawHudCurrency(this, CurrencyManager.getInstance()
+				.getCoins(), engine.DiamondManager.getInstance()
+				.getDiamonds(), this.score);
+		drawManager.drawHudSeparator(this, SEPARATION_LINE_HEIGHT - 1);
 		drawManager.drawItemHud(this, this.items); // Item System (Team CS)
 		// Boss health bar: fixed overlay a row below the item HUD slots
 		// (y 43-59, Team CS), so the two never collide.
