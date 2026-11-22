@@ -29,7 +29,7 @@ public class HudLayoutTest {
 	}
 
 	@Test
-	void largeBalancesShortenSoTheWorstCaseClearsTheLevelText() {
+	void largeBalancesShortenToAtMostFourCharacters() {
 		assertEquals("9999", HudLayout.compactAmount(9_999));
 		assertEquals("10K", HudLayout.compactAmount(10_000));
 		assertEquals("999K", HudLayout.compactAmount(999_999));
@@ -37,15 +37,31 @@ public class HudLayoutTest {
 		assertEquals("1.2M", HudLayout.compactAmount(1_299_999));
 		assertEquals("2.1B", HudLayout.compactAmount(Integer.MAX_VALUE));
 
-		// Silkscreen widths: 11px per score digit, 7px per small character,
-		// "LEVEL 10" ends at x=261 on a 448px screen. A six-digit score with
-		// both balances at the int maximum still leaves a gap after it.
-		int icon = 8 + HudLayout.ICON_GAP;
-		int balance = icon + 7 * HudLayout
-				.compactAmount(Integer.MAX_VALUE).length();
-		HudLayout.RightGroup worst = HudLayout.rightGroup(448, 11 * 6,
-				balance, balance);
-		assertTrue(worst.coinX > 261, "coins start at " + worst.coinX);
+	}
+
+	@Test
+	void livesScoreCoinsAndGemsDoNotOverlapAtTheirMaxValues() {
+		// Measured with the game font (Silkscreen) on the 448px screen:
+		// a score digit is 11px wide, the widest short balance ("999M") is
+		// 29px in the small font, a life icon is 26px, and "LEVEL 10" spans
+		// x=186..261.
+		final int screenWidth = 448;
+		final int scoreWidth = 11 * HudLayout.MAX_SCORE_DIGITS;
+		final int balanceWidth = 8 + HudLayout.ICON_GAP + 29;
+		final int maxLives = 4; // life.maxLives 3 + the Max Life item
+		final int levelLeft = 186;
+		final int levelRight = 261;
+
+		int livesRight = HudLayout.lifeIconX(maxLives - 1) + 26;
+		HudLayout.RightGroup max = HudLayout.rightGroup(screenWidth,
+				scoreWidth, balanceWidth, balanceWidth);
+
+		assertTrue(livesRight < levelLeft, "lives end at " + livesRight);
+		assertTrue(levelRight < max.coinX, "coins start at " + max.coinX);
+		assertTrue(max.coinX + balanceWidth < max.diamondX);
+		assertTrue(max.diamondX + balanceWidth < max.scoreX);
+		assertEquals(screenWidth - HudLayout.RIGHT_MARGIN,
+				max.scoreX + scoreWidth);
 	}
 
 	@Test

@@ -56,6 +56,13 @@ public final class HudLayout {
 		return new RightGroup(scoreX, diamondX, coinX);
 	}
 
+	/**
+	 * Longest score the top bar is laid out for. Eight digits would push the
+	 * coins into "LEVEL 10"; seven already takes hours of farming bonus
+	 * ships in one run.
+	 */
+	public static final int MAX_SCORE_DIGITS = 7;
+
 	/** Amounts from here up are shortened with K, M or B. */
 	public static final int COMPACT_FROM = 10_000;
 
