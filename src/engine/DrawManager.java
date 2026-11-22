@@ -601,23 +601,22 @@ public final class DrawManager {
 		int baseline = ITEM_PANEL_TOP + ITEM_SLOT_HEIGHT - 4;
 		int boxWidth = metrics.stringWidth("WW") + 8;
 
-		// Slots: "1 [SH]" ... an empty slot is a dark box.
-		int x = 6;
-		for (int i = 0; i < view.slots.size(); i++) {
+		// Slots: "1 [SH]" ... only while the slot holds an item (HW-118).
+		// Each slot keeps its own place, so a key's box never moves.
+		int digitWidth = metrics.stringWidth("0") + 3;
+		int slotStride = digitWidth + boxWidth + 6;
+		for (int i : HudLayout.visibleSlots(view.slots)) {
 			ItemAPI.ItemInfo item = view.slots.get(i);
+			int x = 6 + slotStride * i;
 			backBufferGraphics.setColor(Color.GRAY);
 			backBufferGraphics.drawString(Integer.toString(i + 1), x, baseline);
-			x += metrics.stringWidth("0") + 3;
-			backBufferGraphics.setColor(item == null ? Color.DARK_GRAY
-					: ItemSystem.colorOf(item.effectKind));
+			x += digitWidth;
+			backBufferGraphics.setColor(ItemSystem.colorOf(item.effectKind));
 			backBufferGraphics.drawRect(x, ITEM_PANEL_TOP, boxWidth,
 					ITEM_SLOT_HEIGHT);
-			if (item != null) {
-				String label = shortItemName(item.effectKind);
-				backBufferGraphics.drawString(label, x + (boxWidth
-						- metrics.stringWidth(label)) / 2, baseline);
-			}
-			x += boxWidth + 6;
+			String label = shortItemName(item.effectKind);
+			backBufferGraphics.drawString(label, x + (boxWidth
+					- metrics.stringWidth(label)) / 2, baseline);
 		}
 
 		// Effects, right-aligned and compact: "RFx2 SH8s". The equipped item is
@@ -877,18 +876,13 @@ public final class DrawManager {
 			backBufferGraphics.drawLine(j, 0, j, screen.getHeight() - 1);
 	}
 
-	/** Margin between the score text and the right edge of the screen. */
-	private static final int SCORE_ZONE_MARGIN = 8;
-	/** Horizontal gap between the "SCORE" label and the value. */
-	private static final int SCORE_LABEL_GAP = 8;
 	/** Baseline shared by the score value and its glow. */
-	private static final int SCORE_TEXT_Y = 25;
+	private static final int SCORE_TEXT_Y = HudLayout.TEXT_BASELINE;
 
 	/**
-	 * Draws the current score in the top-right corner, arcade-style: no
-	 * border, just the "SCORE" label in white followed by the value in
-	 * green, right-aligned so it stays anchored to the same edge as the
-	 * digit count grows.
+	 * Draws the current score in the top-right corner as digits only,
+	 * right-aligned so it stays anchored to the same edge as the digit count
+	 * grows (HW-118).
 	 *
 	 * @param screen
 	 *            Screen to draw on.
@@ -910,16 +904,9 @@ public final class DrawManager {
 	public void drawScore(final Screen screen, final int score,
 			final float glow) {
 		backBufferGraphics.setFont(fontRegular);
-		String label = "SCORE";
 		String scoreString = Integer.toString(score);
-
-		int scoreWidth = fontRegularMetrics.stringWidth(scoreString);
-		int labelWidth = fontRegularMetrics.stringWidth(label);
-		int scoreX = screen.getWidth() - SCORE_ZONE_MARGIN - scoreWidth;
-		int labelX = scoreX - SCORE_LABEL_GAP - labelWidth;
-
-		backBufferGraphics.setColor(Color.WHITE);
-		backBufferGraphics.drawString(label, labelX, SCORE_TEXT_Y);
+		int scoreX = HudLayout.rightGroup(screen.getWidth(),
+				fontRegularMetrics.stringWidth(scoreString), 0, 0).scoreX;
 
 		if (glow > 0) {
 			Graphics2D g = (Graphics2D) backBufferGraphics;
@@ -940,12 +927,8 @@ public final class DrawManager {
 		backBufferGraphics.drawString(scoreString, scoreX, SCORE_TEXT_Y);
 	}
 
-	/** Horizontal space reserved for the "LIVES" label. */
-	private static final int LIVES_LABEL_WIDTH = 46;
-	/** Horizontal space reserved per life icon. */
-	private static final int LIVES_ICON_SPACING = 35;
 	/** Top of the life icons and their loss outline. */
-	private static final int LIVES_ICON_Y = 10;
+	private static final int LIVES_ICON_Y = HudLayout.LIFE_ICON_Y;
 
 	/**
 	 * Draws remaining lives without a loss response.
@@ -968,10 +951,6 @@ public final class DrawManager {
 	 */
 	public void drawLives(final Screen screen, final int lives,
 			final int lostIndex, final float outlineAlpha) {
-		backBufferGraphics.setFont(fontRegular);
-		backBufferGraphics.setColor(Color.WHITE);
-		backBufferGraphics.drawString("LIVES", 20, 25);
-
 		Ship dummyShip = new Ship(0, 0, Core.getSelectedShipType());
 		// Life icons use the ship look chosen in Customize (A1).
 		shop.ShapeSkin shape = PurchaseManager.getInstance()
@@ -989,7 +968,7 @@ public final class DrawManager {
 	 * @return Horizontal position shared by an icon and its loss outline.
 	 */
 	private static int lifeIconX(final int index) {
-		return 20 + LIVES_LABEL_WIDTH + LIVES_ICON_SPACING * index;
+		return HudLayout.lifeIconX(index);
 	}
 
 	/**
@@ -1023,10 +1002,10 @@ public final class DrawManager {
 		}
 	}
 
-	/** Baseline Y of the top-centre level indicator, kept off y=25 so it
-	 * doesn't collide with the Currency team's coin balance, which is
-	 * also centred there. */
-	private static final int LEVEL_INDICATOR_Y = 14;
+	/** Baseline Y of the top-centre level indicator, on the same row as the
+	 * rest of the top bar now that the coins sit next to the score
+	 * (HW-118). */
+	private static final int LEVEL_INDICATOR_Y = HudLayout.TEXT_BASELINE;
 
 	/**
 	 * Draws the current wave/level number on screen, top-centre, so the
@@ -1054,42 +1033,76 @@ public final class DrawManager {
 		backBufferGraphics.setColor(Color.GREEN);
 		backBufferGraphics.drawString(valueString, valueX, LEVEL_INDICATOR_Y);
 	}
-	/** Y offset of the diamond counter below the score line. */
-	private static final int DIAMONDS_Y_OFFSET = 11;
-	/** Size, in pixels, of the diamond icon drawn next to the count. */
-	private static final int DIAMOND_ICON_SIZE = 10;
-	/** Gap between the diamond icon and its number. */
-	private static final int DIAMOND_ICON_GAP = 4;
+	/** Font size of the coin and diamond amounts in the top bar. */
+	private static final float HUD_CURRENCY_FONT_SIZE = 9f;
+	/** Size, in pixels, of the coin and diamond icons in the top bar. */
+	private static final int HUD_CURRENCY_ICON_SIZE = 8;
+	/** Colour of the thin line under the top bar. */
+	private static final Color HUD_SEPARATOR_COLOR = Color.DARK_GRAY;
 
 	/**
-	 * Draws the player's current diamond balance, left-aligned under the
-	 * score (same start X), as a small diamond icon followed by the amount
-	 * - pure display, no game logic (the Currency team's DiamondManager /
-	 * CashOutScreen own the actual Cash Out / Continue choice and the
-	 * persisted balance).
+	 * Draws the coin and diamond balances small, left of the score, on the
+	 * top bar's text row (HW-118). From 10,000 up they are shortened (12K,
+	 * 1.2M) so a large balance cannot run into the level text. Pure
+	 * display: CurrencyManager and DiamondManager own the balances.
 	 *
 	 * @param screen
 	 *            Screen to draw on.
+	 * @param coins
+	 *            Coin balance to display.
 	 * @param diamonds
-	 *            Current diamond balance to display.
+	 *            Diamond balance to display.
+	 * @param score
+	 *            Current score, which sets where the score digits start.
 	 */
-	public void drawDiamonds(final Screen screen, final int diamonds) {
-		String valueString = Integer.toString(diamonds);
-		int textY = 25 + DIAMONDS_Y_OFFSET;
-		int startX = screen.getWidth() - 60;
-		int iconTop = textY - DIAMOND_ICON_SIZE + 1;
+	public void drawHudCurrency(final Screen screen, final int coins,
+			final int diamonds, final int score) {
+		Font small = fontRegular.deriveFont(HUD_CURRENCY_FONT_SIZE);
+		FontMetrics smallMetrics = backBufferGraphics.getFontMetrics(small);
+		String coinString = HudLayout.compactAmount(coins);
+		String diamondString = HudLayout.compactAmount(diamonds);
+		int iconAndGap = HUD_CURRENCY_ICON_SIZE + HudLayout.ICON_GAP;
+		HudLayout.RightGroup layout = HudLayout.rightGroup(screen.getWidth(),
+				fontRegularMetrics.stringWidth(Integer.toString(score)),
+				iconAndGap + smallMetrics.stringWidth(diamondString),
+				iconAndGap + smallMetrics.stringWidth(coinString));
 
-		int[] xPoints = { startX + DIAMOND_ICON_SIZE / 2, startX + DIAMOND_ICON_SIZE,
-				startX + DIAMOND_ICON_SIZE / 2, startX };
-		int[] yPoints = { iconTop, iconTop + DIAMOND_ICON_SIZE / 2,
-				iconTop + DIAMOND_ICON_SIZE, iconTop + DIAMOND_ICON_SIZE / 2 };
+		int baseline = HudLayout.TEXT_BASELINE;
+		int iconTop = baseline - HUD_CURRENCY_ICON_SIZE;
+		int size = HUD_CURRENCY_ICON_SIZE;
 
+		backBufferGraphics.setColor(Color.YELLOW);
+		backBufferGraphics.fillOval(layout.coinX, iconTop, size, size);
+
+		int x = layout.diamondX;
 		backBufferGraphics.setColor(Color.CYAN);
-		backBufferGraphics.fillPolygon(xPoints, yPoints, 4);
-		backBufferGraphics.setFont(fontRegular);
+		backBufferGraphics.fillPolygon(
+				new int[] { x + size / 2, x + size, x + size / 2, x },
+				new int[] { iconTop, iconTop + size / 2, iconTop + size,
+						iconTop + size / 2 }, 4);
+
+		backBufferGraphics.setFont(small);
 		backBufferGraphics.setColor(Color.WHITE);
-		backBufferGraphics.drawString(valueString, startX + DIAMOND_ICON_SIZE
-				+ DIAMOND_ICON_GAP, textY);
+		backBufferGraphics.drawString(coinString, layout.coinX + iconAndGap,
+				baseline);
+		backBufferGraphics.drawString(diamondString,
+				layout.diamondX + iconAndGap, baseline);
+	}
+
+	/**
+	 * Draws the thin, dim line between the top bar and the play area
+	 * (HW-118). Green is kept for things that are selected, on or available
+	 * (Screen Rules, rule 5), so the separator is dark grey.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param positionY
+	 *            Y coordinate of the line.
+	 */
+	public void drawHudSeparator(final Screen screen, final int positionY) {
+		backBufferGraphics.setColor(HUD_SEPARATOR_COLOR);
+		backBufferGraphics.drawLine(0, positionY, screen.getWidth(),
+				positionY);
 	}
 
 	/**
