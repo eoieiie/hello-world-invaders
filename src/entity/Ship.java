@@ -127,6 +127,11 @@ public class Ship extends Entity {
 	private boolean blinking;
 	private boolean blinkOn;
 
+	/** Highest row the ship can move up to (smallest Y). */
+	private int bandTop;
+	/** Lowest row the ship can move down to (largest Y). */
+	private int bandBottom;
+
 	/**
 	 * Constructor, establishes the ship's properties.
 	 *
@@ -157,6 +162,9 @@ public class Ship extends Entity {
 		this.spriteType = this.idleSprite;
 		this.shootingCooldown = Core.getCooldown(type.shootingInterval);
 		this.destructionCooldown = Core.getCooldown(1000);
+		// Until a band is set the ship stays on its starting row.
+		this.bandTop = positionY;
+		this.bandBottom = positionY;
 
 		/**
 		 * AUTHORED BY: VFX TEAM (effection)
@@ -178,6 +186,41 @@ public class Ship extends Entity {
 	 */
 	public final void moveLeft() {
 		this.positionX -= getSpeed();
+	}
+
+	/**
+	 * Sets the band the ship can move in vertically. A ship that is outside
+	 * the new band is moved to its nearest edge.
+	 *
+	 * @param top
+	 *            Highest row the ship can reach (smallest Y).
+	 * @param bottom
+	 *            Lowest row the ship can reach (largest Y).
+	 */
+	public final void setVerticalBand(final int top, final int bottom) {
+		if (top > bottom)
+			throw new IllegalArgumentException(
+					"Band top must not be below its bottom");
+		this.bandTop = top;
+		this.bandBottom = bottom;
+		this.positionY = Math.max(top, Math.min(bottom, this.positionY));
+	}
+
+	/**
+	 * Moves the ship speed units up, or until the top edge of its band is
+	 * reached.
+	 */
+	public final void moveUp() {
+		this.positionY = Math.max(this.bandTop, this.positionY - getSpeed());
+	}
+
+	/**
+	 * Moves the ship speed units down, or until the bottom edge of its band
+	 * is reached.
+	 */
+	public final void moveDown() {
+		this.positionY = Math.min(this.bandBottom,
+				this.positionY + getSpeed());
 	}
 
 	/**

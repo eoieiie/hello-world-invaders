@@ -104,6 +104,12 @@ public class GameScreen extends Screen {
 	private static final int ACHIEVEMENT_POPUP_SLIDE_OUT = 350;
 	/** Height of the interface separation line. */
 	private static final int SEPARATION_LINE_HEIGHT = 40;
+	/**
+	 * How far the ship can move up from its starting row. The enemy
+	 * formation stops 60 px above the bottom of the screen at the lowest,
+	 * and the ship starts 30 px above it, so 30 px keeps the two apart.
+	 */
+	private static final int SHIP_BAND_HEIGHT = 30;
 	/** Lives at or below this value start the glitch. */
 	private static final int LOW_HEALTH_LIVES = 1;
 	/** Low-life effect duration (ms). */
@@ -389,6 +395,9 @@ public class GameScreen extends Screen {
 		// Initialize the player in both boss and normal stages.
 		this.ship = new Ship(this.width / 2, this.height - 30,
 				Core.getSelectedShipType());
+		this.ship.setVerticalBand(
+				this.ship.getPositionY() - SHIP_BAND_HEIGHT,
+				this.ship.getPositionY());
 
 		// Distinct mid-boss and final boss encounters.
 		if (this.level == 5 || this.level == 10) {
@@ -558,6 +567,17 @@ public class GameScreen extends Screen {
 				}
 				if (moveLeft && !isLeftBorder) {
 					this.ship.moveLeft();
+				}
+
+				// Up and down, only inside the bottom band (HW-105).
+				boolean moveUp = inputManager.isKeyDown(KeyEvent.VK_UP)
+						|| inputManager.isKeyDown(KeyEvent.VK_W);
+				boolean moveDown = inputManager.isKeyDown(KeyEvent.VK_DOWN)
+						|| inputManager.isKeyDown(KeyEvent.VK_S);
+				if (moveUp && !moveDown) {
+					this.ship.moveUp();
+				} else if (moveDown && !moveUp) {
+					this.ship.moveDown();
 				}
 				if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
 					// Count bullets, not trigger pulls: Two Way fires two at
