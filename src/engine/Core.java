@@ -1,6 +1,5 @@
 package engine;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
@@ -46,10 +45,10 @@ public final class Core {
 	
 	/** Difficulty settings for level 1. */
 	private static final GameSettings SETTINGS_LEVEL_1 =
-			new GameSettings(5, 2, 60, 2000);
+			new GameSettings(5, 2, 45, 2000);
 	/** Difficulty settings for level 2. */
 	private static final GameSettings SETTINGS_LEVEL_2 =
-			new GameSettings(5, 3, 50, 2500);
+			new GameSettings(5, 3, 40, 2500);
 	/** Difficulty settings for level 3. */
 	private static final GameSettings SETTINGS_LEVEL_3 =
 			new GameSettings(5, 4, 40, 2000, true);
@@ -67,10 +66,10 @@ public final class Core {
 			new GameSettings(6, 4, 5, 500);
 	/** Difficulty settings for level 8. */
 	private static final GameSettings SETTINGS_LEVEL_8 =
-			new GameSettings(7, 4, 3, 500);
+			new GameSettings(6, 4, 3, 500);
 	/** Difficulty settings for level 9. */
 	private static final GameSettings SETTINGS_LEVEL_9 =
-			new GameSettings(7, 5, 1, 300, true, Math.round(7 * 5 * 0.20f));
+			new GameSettings(6, 5, 1, 300, true, Math.round(6 * 5 * 0.20f));
 	/** Difficulty settings for level 10. */
 	private static final GameSettings SETTINGS_LEVEL_10 =
 			new GameSettings(5, 4, 8, 500);
@@ -81,7 +80,10 @@ public final class Core {
 	/** Screen currently shown. */
 	private static Screen currentScreen;
 	/** Difficulty settings list. */
-	private static List<GameSettings> gameSettings;
+	private static final List<GameSettings> LEVEL_SETTINGS = List.of(
+			SETTINGS_LEVEL_1, SETTINGS_LEVEL_2, SETTINGS_LEVEL_3, SETTINGS_LEVEL_4,
+			SETTINGS_LEVEL_5, SETTINGS_LEVEL_6, SETTINGS_LEVEL_7, SETTINGS_LEVEL_8,
+			SETTINGS_LEVEL_9, SETTINGS_LEVEL_10);
 	/** Application logger. */
 	private static final Logger LOGGER = Logger.getLogger(Core.class
 			.getSimpleName());
@@ -92,6 +94,10 @@ public final class Core {
 	/** Persistent achievement progress manager. */
 	private static AchievementManager achievementManager;
 
+
+	static GameSettings settingsForLevel(final int level) {
+		return LEVEL_SETTINGS.get(level - 1);
+	}
 
 	/**
 	 * Test implementation.
@@ -123,17 +129,6 @@ public final class Core {
 		int width = frame.getWidth();
 		int height = frame.getHeight();
 
-		gameSettings = new ArrayList<GameSettings>();
-		gameSettings.add(SETTINGS_LEVEL_1);
-		gameSettings.add(SETTINGS_LEVEL_2);
-		gameSettings.add(SETTINGS_LEVEL_3);
-		gameSettings.add(SETTINGS_LEVEL_4);
-		gameSettings.add(SETTINGS_LEVEL_5);
-		gameSettings.add(SETTINGS_LEVEL_6);
-		gameSettings.add(SETTINGS_LEVEL_7);
-		gameSettings.add(SETTINGS_LEVEL_8);
-		gameSettings.add(SETTINGS_LEVEL_9);
-		gameSettings.add(SETTINGS_LEVEL_10);
 		
 		GameState gameState;
 		int startLevel = Integer.getInteger("game.startLevel", 1);
@@ -178,7 +173,7 @@ public final class Core {
 
 					GameScreen bossScreen = new GameScreen(
 							bossState,
-							gameSettings.get(bossLevel - 1),
+							settingsForLevel(bossLevel),
 							false,
 							width, height, FPS,
 							true
@@ -220,7 +215,7 @@ public final class Core {
 							&& gameState.getLivesRemaining() < MAX_LIVES;
 					
 					currentScreen = new GameScreen(gameState,
-							gameSettings.get(gameState.getLevel() - 1),
+							settingsForLevel(gameState.getLevel()),
 							bonusLife, width, height, FPS);
 					LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
 							+ " game screen at " + FPS + " fps.");

@@ -21,20 +21,18 @@ import entity.Ship;
  * <p>
  * Everything is worked out from the warp's progress (0 to 1) and a random seed, so every frame can be drawn on its own. While the ship is not solid
  * yet the warp draws it and GameScreen skips the normal ship
- * ({@link #update} returns true). Level start: the impact lands on "GO!".
+ * ({@link #update} returns true). The level-start warp runs during the stage intro.
  * Respawn: a short warp ends as the ship stops being destroyed, so the ship is never hidden while it can be hit. Look only.
  * AUTHORED BY: VFX TEAM (Effection)
  */
 public final class WarpIn {
 
-	/** Length of the level start warp, in milliseconds. */
-	private static final int START_DURATION = 2200;
+	/** Length of the shop preview warp, in milliseconds. */
+	private static final int PREVIEW_DURATION = 2200;
 	/** Length of the warp after a lost life, in milliseconds. */
 	private static final int RESPAWN_DURATION = 750;
 	/** How long the ship stays destroyed (see Ship), in milliseconds. */
 	private static final int SHIP_DESTROYED_TIME = 1000;
-	/** Time from "GO!" to the end of the countdown, in milliseconds. */
-	private static final int GO_TIME = 1000;
 	/** Timeline (parts of the warp): lock-on brackets close in. */
 	private static final double LOCK_END = 0.2;
 	/** Timeline: the beam falls from the rift to the ground. */
@@ -59,14 +57,9 @@ public final class WarpIn {
 	/** Whether this warp's impact was reported (screen shake). */
 	private boolean impactTaken;
 
-	/**
-	 * Plans the level start warp so the ship turns solid on "GO!".
-	 *
-	 * @param countdownMillis
-	 *            Length of the level start countdown (INPUT_DELAY).
-	 */
-	public void startLevel(final int countdownMillis) {
-		plan(countdownMillis - GO_TIME - (long) (IMPACT * START_DURATION),START_DURATION);
+	/** Plays the entry effect within the stage intro. */
+	public void startLevel(final int introMillis) {
+		plan(0, introMillis);
 	}
 
 	/** Plans a warp starting in {@code delay} ms, lasting {@code length}. */
@@ -158,9 +151,9 @@ public final class WarpIn {
 	 */
 	public static void drawPreview(final Graphics2D g,final boolean[][] image, final Color color, final int centerX,
 			final int top, final int height) {
-		int cycle = START_DURATION + 700;
+		int cycle = PREVIEW_DURATION + 700;
 		long now = System.currentTimeMillis();
-		double p = (now % cycle) / (double) START_DURATION;
+		double p = (now % cycle) / (double) PREVIEW_DURATION;
 		int x = centerX - image.length;
 		int y = top + height - image[0].length * 2 - 4;
 		java.awt.Shape oldClip = g.getClip();
