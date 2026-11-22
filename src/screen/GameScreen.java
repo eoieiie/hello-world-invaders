@@ -28,6 +28,7 @@ import engine.DamageDimEffect;
 import engine.LightningChain;
 import engine.GameEvents;
 import engine.GlitchEffect;
+import engine.HudFeedback;
 import engine.PurchaseManager;
 import engine.MeteorManager;
 import engine.RespawnBlink;
@@ -229,6 +230,8 @@ public class GameScreen extends Screen {
 	private int score;
 	/** Player lives left. */
 	private int lives;
+	/** Timing and previous values for score and life HUD responses. */
+	private final HudFeedback hudFeedback = new HudFeedback();
 	/** Total bullets shot by the player. */
 	private int bulletsShot;
 	/** Total ships destroyed by the player. */
@@ -424,6 +427,7 @@ public class GameScreen extends Screen {
 		this.screenFinishedCooldown = Core.getCooldown(SCREEN_CHANGE_INTERVAL);
 		this.lowHealthTimer = Core.getCooldown(LOW_HEALTH_EFFECT_DURATION);
 		this.prevLives = this.lives;
+		this.hudFeedback.reset(this.score, this.lives);
 		this.lowHealthActive = false;
 		this.bullets = new HashSet<Bullet>();
 		this.cometTrailOn = PurchaseManager.getInstance().isEffectOn("comet_trail"); // AUTHORED BY: VFX TEAM (Effection)
@@ -906,6 +910,10 @@ public class GameScreen extends Screen {
 			((FinalBoss) this.midBoss).resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		}
+		// HUD responses resume with their remaining time.
+		if (this.paused)
+			this.hudFeedback.resumeAfterPause(
+					System.currentTimeMillis() - this.pauseStartedAt);
 		// Item timers (Boost, drops) skip the paused time too (HW-68).
 		this.items.resumeAfterPause();
 		this.paused = false;
@@ -1023,8 +1031,14 @@ public class GameScreen extends Screen {
 		drawManager.drawPointsEffect(this, this.pointsEffect);
 
 		// Interface.
-		drawManager.drawScore(this, this.score);
-		drawManager.drawLives(this, this.lives);
+		long hudNow = this.paused ? this.pauseStartedAt
+				: System.currentTimeMillis();
+		this.hudFeedback.observe(this.score, this.lives, hudNow);
+		drawManager.drawScore(this, this.score,
+				this.hudFeedback.scoreGlow(hudNow));
+		drawManager.drawLives(this, this.lives,
+				this.hudFeedback.lostLifeIndex(hudNow),
+				this.hudFeedback.lostLifeAlpha(hudNow));
 		drawManager.drawLevel(this, this.level);
 		// Explicit Y (36, not the 25 default): the level indicator now
 		// sits centred at y=14, and the coin icon is tall enough that at
