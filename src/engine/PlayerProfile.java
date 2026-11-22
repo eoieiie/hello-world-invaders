@@ -18,6 +18,8 @@ public class PlayerProfile {
 	/** Total levels cleared without the player taking damage. */
 	private int flawlessLevelsCleared;
 	private int totalItemsUsed;
+	/** Whether the tutorial has been seen. */
+	private boolean tutorialSeen;
 
 	/** Creates an empty player profile. */
 	public PlayerProfile() {
@@ -91,6 +93,16 @@ public class PlayerProfile {
 
 	/** @return Total successful item uses. */
 	public final int getTotalItemsUsed() {return this.totalItemsUsed;
+	}
+
+	/** Records that the tutorial has been seen. */
+	public final void markTutorialSeen() {
+		this.tutorialSeen = true;
+	}
+
+	/** @return True once the tutorial has been seen. */
+	public final boolean isTutorialSeen() {
+		return this.tutorialSeen;
 	}
 
 	/**
