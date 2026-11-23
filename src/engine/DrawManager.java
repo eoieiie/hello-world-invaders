@@ -1726,6 +1726,7 @@ public final class DrawManager {
 			backBufferGraphics.drawLine(margin, y + rowHeight / 3,
 					screen.getWidth() - margin, y + rowHeight / 3);
 		}
+		backBufferGraphics.setFont(fontRegular);
 	}
 
 	/**
@@ -1783,17 +1784,23 @@ public final class DrawManager {
 	 * @param screen
 	 *            Screen to draw on.
 	 * @param acceptsInput
-	 *            If the screen accepts input.
+	 *            Whether name entry and navigation are enabled.
 	 * @param isNewRecord
 	 *            If the score is a new high score.
+	 * @param counting
+	 *            Whether Space can reveal the remaining values.
 	 */
 	public void drawRunSummaryHeader(final Screen screen, final boolean acceptsInput,
-							 final boolean isNewRecord) {
+							 final boolean isNewRecord, final boolean counting) {
 		drawScreenTitle(screen, "Run summary");
-		drawKeyHints(screen, acceptsInput
-				? (isNewRecord ? "arrows name, space replay, esc back"
-						: "space replay, esc back")
-				: "preparing results");
+		String spaceHint = counting ? "space skip" : "space replay";
+		String hint;
+		if (acceptsInput) {
+			hint = (isNewRecord ? "arrows name, " : "") + spaceHint + ", esc back";
+		} else {
+			hint = counting ? spaceHint : "preparing results";
+		}
+		drawKeyHints(screen, hint);
 	}
 
 	/**

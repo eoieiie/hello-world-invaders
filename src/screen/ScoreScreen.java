@@ -30,7 +30,6 @@ public class ScoreScreen extends Screen {
 	private static final int COUNTER_DURATION_MILLIS = 300;
 	private final RunSummaryCounters counters =
 			new RunSummaryCounters(COUNTER_DURATION_MILLIS);
-	private long summaryStartNanos;
 
 	/** Current score. */
 	private int score;
@@ -97,7 +96,7 @@ public class ScoreScreen extends Screen {
 	 * @return Next screen code.
 	 */
 	public final int run() {
-		this.summaryStartNanos = System.nanoTime();
+		this.counters.start(System.nanoTime());
 		super.run();
 
 		return this.returnCode;
@@ -109,15 +108,19 @@ public class ScoreScreen extends Screen {
 	protected final void update() {
 		super.update();
 
-		draw();
-		if (this.inputDelay.checkFinished()) {
+		long elapsedMillis = this.counters.elapsedMillis(System.nanoTime());
+		boolean replayPressed = this.counters.requestsReplay(
+				inputManager.isKeyDown(KeyEvent.VK_SPACE), elapsedMillis);
+		boolean acceptsInput = this.inputDelay.checkFinished();
+		draw(elapsedMillis, acceptsInput);
+		if (acceptsInput) {
 			if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
 				// Return to main menu.
 				this.returnCode = 1;
 				this.isRunning = false;
 				if (this.isNewRecord)
 					saveScore();
-			} else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+			} else if (replayPressed) {
 				// Play again.
 				this.returnCode = 2;
 				this.isRunning = false;
@@ -174,13 +177,11 @@ public class ScoreScreen extends Screen {
 	/**
 	 * Draws the elements associated with the screen.
 	 */
-	private void draw() {
+	private void draw(final long elapsedMillis, final boolean acceptsInput) {
 		drawManager.initDrawing(this);
 
-		drawManager.drawRunSummaryHeader(this, this.inputDelay.checkFinished(),
-				this.isNewRecord);
-		long elapsedMillis = (System.nanoTime() - this.summaryStartNanos)
-				/ 1_000_000L;
+		drawManager.drawRunSummaryHeader(this, acceptsInput, this.isNewRecord,
+				this.counters.isCounting(elapsedMillis));
 		float accuracy = RunSummaryCounters.accuracy(
 				this.shipsDestroyed, this.bulletsShot);
 		drawManager.drawResults(this,

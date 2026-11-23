@@ -3,8 +3,45 @@ package screen;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
+import engine.ScreenTransition;
+
 class RunSummaryCountersTest {
     private final RunSummaryCounters counters = new RunSummaryCounters(300);
+
+    @Test
+    void nonzeroScoreStartsCountingAfterTheScreenFade() {
+        long opening = 8_000_000_000L;
+        long fadeEnd = opening + ScreenTransition.DURATION_MILLIS * 1_000_000L;
+        counters.start(opening);
+        assertEquals(0, counters.value(-80, 0, counters.elapsedMillis(opening)));
+        assertEquals(0, counters.value(-80, 0, counters.elapsedMillis(fadeEnd)));
+        assertEquals(-40, counters.value(-80, 0, counters.elapsedMillis(fadeEnd + 150_000_000L)));
+        assertEquals(-80, counters.value(-80, 0, counters.elapsedMillis(fadeEnd + 300_000_000L)));
+    }
+
+    @Test
+    void freshSpaceRevealsEveryRowAndAHeldSkipCannotStartReplay() {
+        counters.start(0);
+        assertFalse(counters.requestsReplay(true, 100), "Space held over from gameplay");
+        assertTrue(counters.isCounting(100));
+        assertFalse(counters.requestsReplay(false, 110));
+        assertFalse(counters.requestsReplay(true, 120), "skip stays on the summary");
+        assertFalse(counters.isCounting(120));
+        for (int row = 0; row < 4; row++)
+            assertEquals(1.0, counters.progress(row, 120));
+        assertFalse(counters.requestsReplay(true, 1500), "held skip after counters finish");
+        assertFalse(counters.requestsReplay(false, 1510));
+        assertTrue(counters.requestsReplay(true, 1520), "fresh press can replay");
+    }
+
+    @Test
+    void freshSpaceReplaysAfterNaturalCompletionWithoutAnExtraSkip() {
+        counters.start(0);
+        counters.requestsReplay(false, 0);
+        assertTrue(counters.isCounting(1199));
+        assertFalse(counters.isCounting(1200));
+        assertTrue(counters.requestsReplay(true, 1200));
+    }
 
     @Test
     void rowsStartOnlyAfterThePreviousRowFinishes() {
