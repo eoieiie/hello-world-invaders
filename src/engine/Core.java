@@ -13,6 +13,7 @@ import screen.AchievementsScreen;
 import screen.CashOutScreen;
 import screen.GameScreen;
 import screen.HighScoreScreen;
+import screen.ModeSelectScreen;
 import screen.ScoreScreen;
 import screen.Screen;
 import screen.SettingsScreen;
@@ -153,13 +154,62 @@ public final class Core {
 				LOGGER.info("Closing title screen.");
 				break;
 			case 2:
-				// Practice first; ESC returns to the menu without starting a run.
-				if (startLevel == 1) {
+				boolean backToMenu = false;
+
+				while (true) {
+					ModeSelectScreen modeScreen =
+							new ModeSelectScreen(width, height, FPS);
+
+					currentScreen = modeScreen;
+					returnCode = frame.setScreen(modeScreen);
+
+					if (returnCode != 2) {
+						backToMenu = true;
+						break;
+					}
+
+					if (!modeScreen.isPracticeMode()) {
+						break;
+					}
+
+					int bossLevel = modeScreen.getBossLevel();
+					GameState bossState =
+							new GameState(bossLevel, 0, MAX_LIVES, 0, 0, 0);
+
+					GameScreen bossScreen = new GameScreen(
+							bossState,
+							gameSettings.get(bossLevel - 1),
+							false,
+							width, height, FPS,
+							true
+					);
+
+					currentScreen = bossScreen;
+					frame.setScreen(bossScreen);
+
+					if (bossScreen.isQuitToMenu()) {
+						returnCode = 1;
+						backToMenu = true;
+						break;
+					}
+
+					GameState bossResult = bossScreen.getGameState();
+					bossResult = settlePendingDiamonds(bossResult);
+				}
+
+				if (backToMenu) {
+					break;
+				}
+
+				// Practice on the first run only; ESC returns to the menu.
+				AchievementManager achievements = getAchievementManager();
+				if (startLevel == 1 && !achievements.isTutorialSeen()) {
 					currentScreen = new TutorialScreen(width, height, FPS);
 					returnCode = frame.setScreen(currentScreen);
 					if (returnCode != 2) {
 						break;
 					}
+					achievements.recordTutorialSeen();
 				}
 				// Game & score.
 				boolean quitToMenu = false;

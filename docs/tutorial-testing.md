@@ -1,13 +1,13 @@
 # Tutorial stage
 
-Every new game starts with a safe tutorial before Stage 1. Use A/D or the
+The first new game starts with a safe tutorial before Stage 1. Use A/D or the
 left/right arrows to move, then SPACE to shoot. Clear the one-enemy practice
 wave and press ENTER to start Stage 1. Press S at any tutorial step to skip
 directly to Stage 1, including immediately after opening the tutorial.
 ESC returns to the main menu; it does not skip into the game.
 Practice does not award points or consume lives in the normal game. Completing
 or skipping the tutorial starts Stage 1 with the normal initial game state.
-The tutorial remains available on every new game; completion is not saved.
+Finishing or skipping it is saved in `player-profile`, so later games skip it.
 
 S must be released and pressed again if held while entering from the menu.
 If S and ESC are pressed together, returning to the menu takes priority.
@@ -23,7 +23,7 @@ If S and ESC are pressed together, returning to the menu takes priority.
    and bosses. Holding SPACE must not skip this message.
 6. Press ENTER: Stage 1 begins with a fresh score and three lives.
 7. Start a new game and press ESC during the tutorial: return to the menu without
-   entering Stage 1 or the score screen. Starting again resets the tutorial.
+   entering Stage 1 or the score screen. Starting again shows the tutorial again.
 8. Move against each edge: the player must stay inside the play area.
 
 ## Skip and regression checks
@@ -42,7 +42,7 @@ when reporting a manual test; the checklist below is not a claim that it was run
 | Conflicting keys | Press S and ESC together. | Return to menu. |
 | Normal completion | Move, fire, defeat the enemy, release then press ENTER. | Existing completion path still starts Stage 1. |
 | Fresh game state | Compare a skipped run with a completed tutorial run. | Both start at Stage 1 with score 0, three lives and no practice kill/shot credit. |
-| Repeat | Return to menu and select Play again. | Tutorial resets; skip remains available. |
+| Repeat | Finish or skip, then select Play again (also after restarting the game). | Stage 1 starts with no tutorial. |
 
 Capture the full tutorial window showing `S: skip to Stage 1 | ESC: menu`,
 then Stage 1 after skipping. Confirm the hint fits and remains readable.
