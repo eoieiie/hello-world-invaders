@@ -59,7 +59,7 @@ public final class WarpIn {
 
 	/** Plays the entry effect within the stage intro. */
 	public void startLevel(final int introMillis) {
-		plan(0, introMillis);
+		plan(ScreenTransition.DURATION_MILLIS, introMillis);
 	}
 
 	/** Plans a warp starting in {@code delay} ms, lasting {@code length}. */
