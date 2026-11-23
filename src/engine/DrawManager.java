@@ -1695,31 +1695,38 @@ public final class DrawManager {
 	 *            Total ships destroyed.
 	 * @param accuracy
 	 *            Total accuracy.
-	 * @param isNewRecord
-	 *            If the score is a new high score.
 	 */
 	public void drawResults(final Screen screen, final int score,
 							final int livesRemaining, final int shipsDestroyed,
-							final float accuracy, final boolean isNewRecord) {
-		String scoreString = String.format("score %04d", score);
-		String livesRemainingString = "lives remaining " + livesRemaining;
-		String shipsDestroyedString = "enemies destroyed " + shipsDestroyed;
-		String accuracyString = String
-				.format("accuracy %.2f%%", accuracy * 100);
-
-		int height = isNewRecord ? 4 : 2;
-
-		backBufferGraphics.setColor(Color.WHITE);
-		drawCenteredRegularString(screen, scoreString, screen.getHeight()
-				/ height);
-		drawCenteredRegularString(screen, livesRemainingString,
-				screen.getHeight() / height + fontRegularMetrics.getHeight()
-						* 2);
-		drawCenteredRegularString(screen, shipsDestroyedString,
-				screen.getHeight() / height + fontRegularMetrics.getHeight()
-						* 4);
-		drawCenteredRegularString(screen, accuracyString, screen.getHeight()
-				/ height + fontRegularMetrics.getHeight() * 6);
+							final float accuracy) {
+		String[] labels = { "Score", "Lives remaining", "Enemies destroyed",
+				"Accuracy" };
+		String[] values = { String.format("%04d", score),
+				Integer.toString(livesRemaining), Integer.toString(shipsDestroyed),
+				String.format(java.util.Locale.ROOT, "%.2f%%", accuracy * 100) };
+		int margin = 28;
+		int rowHeight = fontRegularMetrics.getHeight() * 2;
+		for (int i = 0; i < labels.length; i++) {
+			int y = screen.getHeight() / 4 + rowHeight * i;
+			Font rowFont = fontRegular;
+			int textWidth = fontRegularMetrics.stringWidth(labels[i])
+					+ fontRegularMetrics.stringWidth(values[i]);
+			int available = screen.getWidth() - margin * 2 - 24;
+			if (textWidth > available)
+				rowFont = fontRegular.deriveFont(
+						fontRegular.getSize2D() * available / textWidth);
+			backBufferGraphics.setFont(rowFont);
+			backBufferGraphics.setColor(Color.WHITE);
+			backBufferGraphics.drawString(labels[i], margin, y);
+			int valueWidth = backBufferGraphics.getFontMetrics()
+					.stringWidth(values[i]);
+			backBufferGraphics.drawString(values[i],
+					screen.getWidth() - margin - valueWidth, y);
+			backBufferGraphics.setColor(Color.DARK_GRAY);
+			backBufferGraphics.drawLine(margin, y + rowHeight / 3,
+					screen.getWidth() - margin, y + rowHeight / 3);
+		}
+		backBufferGraphics.setFont(fontRegular);
 	}
 
 	/**
@@ -1772,33 +1779,28 @@ public final class DrawManager {
 	}
 
 	/**
-	 * Draws basic content of game over screen.
+	 * Draws the run summary title and its single footer through shared helpers.
 	 *
 	 * @param screen
 	 *            Screen to draw on.
 	 * @param acceptsInput
-	 *            If the screen accepts input.
+	 *            Whether name entry and navigation are enabled.
 	 * @param isNewRecord
 	 *            If the score is a new high score.
+	 * @param counting
+	 *            Whether Space can reveal the remaining values.
 	 */
-	public void drawGameOver(final Screen screen, final boolean acceptsInput,
-							 final boolean isNewRecord) {
-		String gameOverString = "Game Over";
-		String continueOrExitString =
-				"Press Space to play again, Escape to exit";
-
-		int height = isNewRecord ? 4 : 2;
-
-		backBufferGraphics.setColor(Color.GREEN);
-		drawCenteredBigString(screen, gameOverString, screen.getHeight()
-				/ height - fontBigMetrics.getHeight() * 2);
-
-		if (acceptsInput)
-			backBufferGraphics.setColor(Color.GREEN);
-		else
-			backBufferGraphics.setColor(Color.GRAY);
-		drawCenteredRegularString(screen, continueOrExitString,
-				screen.getHeight() / 2 + fontRegularMetrics.getHeight() * 10);
+	public void drawRunSummaryHeader(final Screen screen, final boolean acceptsInput,
+							 final boolean isNewRecord, final boolean counting) {
+		drawScreenTitle(screen, "Run summary");
+		String spaceHint = counting ? "space skip" : "space replay";
+		String hint;
+		if (acceptsInput) {
+			hint = (isNewRecord ? "arrows name, " : "") + spaceHint + ", esc back";
+		} else {
+			hint = counting ? spaceHint : "preparing results";
+		}
+		drawKeyHints(screen, hint);
 	}
 
 	/**

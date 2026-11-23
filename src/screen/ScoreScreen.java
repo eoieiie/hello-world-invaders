@@ -26,6 +26,10 @@ public class ScoreScreen extends Screen {
 	private static final int FIRST_CHAR = 65;
 	/** Code of last mayus character. */
 	private static final int LAST_CHAR = 90;
+	/** Normal motion duration per counter, as defined in Screen Rules. */
+	private static final int COUNTER_DURATION_MILLIS = 300;
+	private final RunSummaryCounters counters =
+			new RunSummaryCounters(COUNTER_DURATION_MILLIS);
 
 	/** Current score. */
 	private int score;
@@ -92,6 +96,7 @@ public class ScoreScreen extends Screen {
 	 * @return Next screen code.
 	 */
 	public final int run() {
+		this.counters.start(System.nanoTime());
 		super.run();
 
 		return this.returnCode;
@@ -103,15 +108,19 @@ public class ScoreScreen extends Screen {
 	protected final void update() {
 		super.update();
 
-		draw();
-		if (this.inputDelay.checkFinished()) {
+		long elapsedMillis = this.counters.elapsedMillis(System.nanoTime());
+		boolean replayPressed = this.counters.requestsReplay(
+				inputManager.isKeyDown(KeyEvent.VK_SPACE), elapsedMillis);
+		boolean acceptsInput = this.inputDelay.checkFinished();
+		draw(elapsedMillis, acceptsInput);
+		if (acceptsInput) {
 			if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
 				// Return to main menu.
 				this.returnCode = 1;
 				this.isRunning = false;
 				if (this.isNewRecord)
 					saveScore();
-			} else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+			} else if (replayPressed) {
 				// Play again.
 				this.returnCode = 2;
 				this.isRunning = false;
@@ -168,14 +177,18 @@ public class ScoreScreen extends Screen {
 	/**
 	 * Draws the elements associated with the screen.
 	 */
-	private void draw() {
+	private void draw(final long elapsedMillis, final boolean acceptsInput) {
 		drawManager.initDrawing(this);
 
-		drawManager.drawGameOver(this, this.inputDelay.checkFinished(),
-				this.isNewRecord);
-		drawManager.drawResults(this, this.score, this.livesRemaining,
-				this.shipsDestroyed, (float) this.shipsDestroyed
-						/ this.bulletsShot, this.isNewRecord);
+		drawManager.drawRunSummaryHeader(this, acceptsInput, this.isNewRecord,
+				this.counters.isCounting(elapsedMillis));
+		float accuracy = RunSummaryCounters.accuracy(
+				this.shipsDestroyed, this.bulletsShot);
+		drawManager.drawResults(this,
+				this.counters.value(this.score, 0, elapsedMillis),
+				this.counters.value(this.livesRemaining, 1, elapsedMillis),
+				this.counters.value(this.shipsDestroyed, 2, elapsedMillis),
+				(float) (accuracy * this.counters.progress(3, elapsedMillis)));
 
 		if (this.isNewRecord)
 			drawManager.drawNameInput(this, this.name, this.nameCharSelected);
