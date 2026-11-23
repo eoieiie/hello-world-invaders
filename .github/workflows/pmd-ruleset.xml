@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Method Cyclomatic Complexity"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+
+    <description>
+        Report cyclomatic complexity for each method.
+    </description>
+
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="methodReportLevel" value="1"/>
+        </properties>
+    </rule>
+</ruleset>
