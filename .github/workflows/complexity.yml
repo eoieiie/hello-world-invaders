@@ -137,9 +137,10 @@ jobs:
                   failed = failed or exceeded
                   label = ".".join(filter(None, [violation.get("class"), method]))
                   rows.append(f"| {escape(filename)}:{begin} | {escape(label)} "
-                              f"| {complexity} | {'❌' if exceeded else '✅'} |")
+                              f"| {complexity} | {'⚠️ Over limit' if exceeded else '✅ Within limit'} |")
 
-          heading = (f"## Cyclomatic Complexity by Method\n\nThreshold: **Fail if complexity is greater than {limit}**\n\n"
+          heading = (f"## Cyclomatic Complexity by Method\n\nAdvisory threshold: **Over limit if complexity is greater than {limit}**\n\n"
+                     "This check is advisory and does not fail CI.\n\n"
                      "Scope: Only implemented methods containing changed lines in the PR (including internal deletions)\n\n")
           table = "| File:Line | Method | Complexity | Result |\n|---|---|---:|:---:|\n"
           bodies, body = [], heading + table
@@ -150,7 +151,7 @@ jobs:
               body += row + "\n"
           if not rows:
               body = heading + "No changed implemented methods found.\n"
-          body += "\n**Result: Failed**" if failed else "\n**Result: Passed**"
+          body += "\n**Result: Over limit**" if failed else "\n**Result: Within limit**"
           bodies.append(body)
           (temp / "complexity-result.json").write_text(
               json.dumps({"comments": bodies}, ensure_ascii=False), encoding="utf-8",
