@@ -388,27 +388,8 @@ public final class FileManager {
 			inputStream = new FileInputStream(profileFile);
 			Properties properties = new Properties();
 			properties.load(inputStream);
-
-			int totalEnemiesKilled = Integer.parseInt(properties.getProperty(
-					"totalEnemiesKilled", "0"));
-			int flawlessLevelsCleared = Integer.parseInt(properties.getProperty(
-					"flawlessLevelsCleared", "0"));
-			int totalItemsUsed = Integer.parseInt(
-					properties.getProperty("totalItemsUsed", "0"));
-			Set<String> unlockedAchievements = new HashSet<String>();
-			String unlocked = properties.getProperty("unlockedAchievements", "");
-			if (!unlocked.isEmpty())
-				for (String achievementId : unlocked.split(","))
-					unlockedAchievements.add(achievementId);
-
 			logger.info("Loading player profile.");
-			Set<String> completedShips = new HashSet<String>();
-			String completed = properties.getProperty("level10CompletedShips", "");
-			if (!completed.isEmpty())
-				for (String shipId : completed.split(","))
-					completedShips.add(shipId);
-			return new PlayerProfile(totalEnemiesKilled, unlockedAchievements,
-					completedShips, flawlessLevelsCleared, totalItemsUsed);
+			return parsePlayerProfile(properties);
 		} finally {
 			if (inputStream != null)
 				inputStream.close();
@@ -430,23 +411,59 @@ public final class FileManager {
 		OutputStream outputStream = null;
 		try {
 			outputStream = new FileOutputStream(profileFile);
-			Properties properties = new Properties();
-			properties.setProperty("totalEnemiesKilled", Integer.toString(
-					playerProfile.getTotalEnemiesKilled()));
-			properties.setProperty("flawlessLevelsCleared", Integer.toString(
-					playerProfile.getFlawlessLevelsCleared()));
-			properties.setProperty("unlockedAchievements", joinAchievementIds(
-					playerProfile.getUnlockedAchievements()));
-			properties.setProperty("level10CompletedShips", joinAchievementIds(
-					playerProfile.getLevel10CompletedShips()));
-			properties.setProperty("totalItemsUsed",
-					Integer.toString(playerProfile.getTotalItemsUsed()));
-			properties.store(outputStream, "Space Invaders player profile");
+			toProperties(playerProfile).store(outputStream,
+					"Space Invaders player profile");
 			logger.info("Saving player profile.");
 		} finally {
 			if (outputStream != null)
 				outputStream.close();
 		}
+	}
+
+	/** Reads a player profile from its properties; missing keys use defaults. */
+	static PlayerProfile parsePlayerProfile(final Properties properties) {
+		int totalEnemiesKilled = Integer.parseInt(properties.getProperty(
+				"totalEnemiesKilled", "0"));
+		int flawlessLevelsCleared = Integer.parseInt(properties.getProperty(
+				"flawlessLevelsCleared", "0"));
+		int totalItemsUsed = Integer.parseInt(
+				properties.getProperty("totalItemsUsed", "0"));
+		Set<String> unlockedAchievements = new HashSet<String>();
+		String unlocked = properties.getProperty("unlockedAchievements", "");
+		if (!unlocked.isEmpty())
+			for (String achievementId : unlocked.split(","))
+				unlockedAchievements.add(achievementId);
+
+		Set<String> completedShips = new HashSet<String>();
+		String completed = properties.getProperty("level10CompletedShips", "");
+		if (!completed.isEmpty())
+			for (String shipId : completed.split(","))
+				completedShips.add(shipId);
+		PlayerProfile profile = new PlayerProfile(totalEnemiesKilled,
+				unlockedAchievements, completedShips, flawlessLevelsCleared,
+				totalItemsUsed);
+		if (Boolean.parseBoolean(properties.getProperty("tutorialSeen",
+				"false").trim()))
+			profile.markTutorialSeen();
+		return profile;
+	}
+
+	/** Turns a player profile into the properties saved to its file. */
+	static Properties toProperties(final PlayerProfile playerProfile) {
+		Properties properties = new Properties();
+		properties.setProperty("totalEnemiesKilled", Integer.toString(
+				playerProfile.getTotalEnemiesKilled()));
+		properties.setProperty("flawlessLevelsCleared", Integer.toString(
+				playerProfile.getFlawlessLevelsCleared()));
+		properties.setProperty("unlockedAchievements", joinAchievementIds(
+				playerProfile.getUnlockedAchievements()));
+		properties.setProperty("level10CompletedShips", joinAchievementIds(
+				playerProfile.getLevel10CompletedShips()));
+		properties.setProperty("totalItemsUsed",
+				Integer.toString(playerProfile.getTotalItemsUsed()));
+		properties.setProperty("tutorialSeen",
+				Boolean.toString(playerProfile.isTutorialSeen()));
+		return properties;
 	}
 
 	/**
@@ -533,7 +550,7 @@ public final class FileManager {
 	 * @param achievementIds Achievement identifiers.
 	 * @return Comma-separated achievement identifiers.
 	 */
-	private String joinAchievementIds(final Set<String> achievementIds) {
+	private static String joinAchievementIds(final Set<String> achievementIds) {
 		StringBuilder joinedIds = new StringBuilder();
 		for (String achievementId : achievementIds) {
 			if (joinedIds.length() > 0)

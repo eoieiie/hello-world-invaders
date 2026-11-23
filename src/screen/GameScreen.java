@@ -28,6 +28,7 @@ import engine.DamageDimEffect;
 import engine.LightningChain;
 import engine.GameEvents;
 import engine.GlitchEffect;
+import engine.HudFeedback;
 import engine.PurchaseManager;
 import engine.MeteorManager;
 import engine.RespawnBlink;
@@ -104,6 +105,12 @@ public class GameScreen extends Screen {
 	private static final int ACHIEVEMENT_POPUP_SLIDE_OUT = 350;
 	/** Height of the interface separation line. */
 	private static final int SEPARATION_LINE_HEIGHT = 40;
+	/**
+	 * How far the ship can move up from its starting row. The enemy
+	 * formation stops 60 px above the bottom of the screen at the lowest,
+	 * and the ship starts 30 px above it, so 30 px keeps the two apart.
+	 */
+	private static final int SHIP_BAND_HEIGHT = 30;
 	/** Lives at or below this value start the glitch. */
 	private static final int LOW_HEALTH_LIVES = 1;
 	/** Low-life effect duration (ms). */
@@ -120,6 +127,8 @@ public class GameScreen extends Screen {
 	private static final int PAUSE_KEY_DEBOUNCE = 200;
 	/** Minimum time between two pause-menu cursor moves. */
 	private static final int PAUSE_SELECTION_DEBOUNCE = 200;
+	/** Whether the game is in practice mode. */
+	private final boolean practiceMode;
 
 	/**
 	 * Options listed in the pause menu, in the order they are drawn.
@@ -221,6 +230,8 @@ public class GameScreen extends Screen {
 	private int score;
 	/** Player lives left. */
 	private int lives;
+	/** Timing and previous values for score and life HUD responses. */
+	private final HudFeedback hudFeedback = new HudFeedback();
 	/** Total bullets shot by the player. */
 	private int bulletsShot;
 	/** Total ships destroyed by the player. */
@@ -315,9 +326,20 @@ public class GameScreen extends Screen {
 	private final int initialShipsDestroyed;
 	/** Pending diamonds the level started with, restored by "Restart". */
 	private final int initialPendingDiamonds;
+	/** Number of diamonds to clear in boss practice mode. */
+	private static final int BOSS_PRACTICE_LEVEL_5_DIAMONDS = 3;
+	private static final int BOSS_PRACTICE_LEVEL_10_DIAMONDS = 5;
 
 	/** Boss encounter; normal stages use enemyShipFormation instead. */
 	private Boss midBoss;
+
+	/** Creates a normal-play screen with practice mode disabled. */
+	public GameScreen(final GameState gameState,
+			final GameSettings gameSettings, final boolean bonusLife,
+			final int width, final int height, final int fps) {
+		this(gameState, gameSettings, bonusLife,
+			width, height, fps, false);
+	}
 
 	/**
 	 * Constructor, establishes the properties of the screen.
@@ -334,10 +356,12 @@ public class GameScreen extends Screen {
 	 *            Screen height.
 	 * @param fps
 	 *            Frames per second, frame rate at which the game is run.
+	 * @param practiceMode
+	 *			  Whether this screen runs a standalone boss challenge.
 	 */
 	public GameScreen(final GameState gameState,
-					  final GameSettings gameSettings, final boolean bonusLife,
-					  final int width, final int height, final int fps) {
+					final GameSettings gameSettings, final boolean bonusLife,
+					final int width, final int height, final int fps, final boolean practiceMode) {
 		super(width, height, fps);
 
 		this.gameSettings = gameSettings;
@@ -353,7 +377,7 @@ public class GameScreen extends Screen {
 		this.levelsCompletedRun = gameState.getLevelsCompletedRun();
         this.coinsCollected = gameState.getCoinsCollected();
 		this.tookDamage = false;
-
+		this.practiceMode = practiceMode;
 
 
 		// Snapshot of how the level started, so "Restart" has something to
@@ -375,6 +399,9 @@ public class GameScreen extends Screen {
 		// Initialize the player in both boss and normal stages.
 		this.ship = new Ship(this.width / 2, this.height - 30,
 				Core.getSelectedShipType());
+		this.ship.setVerticalBand(
+				this.ship.getPositionY() - SHIP_BAND_HEIGHT,
+				this.ship.getPositionY());
 
 		// Distinct mid-boss and final boss encounters.
 		if (this.level == 5 || this.level == 10) {
@@ -401,6 +428,7 @@ public class GameScreen extends Screen {
 		this.screenFinishedCooldown = Core.getCooldown(SCREEN_CHANGE_INTERVAL);
 		this.lowHealthTimer = Core.getCooldown(LOW_HEALTH_EFFECT_DURATION);
 		this.prevLives = this.lives;
+		this.hudFeedback.reset(this.score, this.lives);
 		this.lowHealthActive = false;
 		this.bullets = new HashSet<Bullet>();
 		this.cometTrailOn = PurchaseManager.getInstance().isEffectOn("comet_trail"); // AUTHORED BY: VFX TEAM (Effection)
@@ -431,8 +459,14 @@ public class GameScreen extends Screen {
 		this.pauseSelection = PauseOption.RESUME;
 		this.pauseStartedAt = 0;
 
-		// Item System (Team CS): level 1 starts a new run, later levels keep it.
-		this.items = ItemSystem.forLevel(this.level);
+		// Item System (Team CS): initialize item state for the selected mode.
+		if (this.practiceMode) {
+			// Boss challenge: fresh item state with the currently equipped item.
+			this.items = ItemSystem.newPracticeRun();
+		} else {
+			// Normal gameplay: maintains item state between stages.
+			this.items = ItemSystem.forLevel(this.level);
+		}
 		this.items.beginLevel(this.level, this.width, this.ship,
 				new ItemSystem.GameHooks() {
 					public int getLives() { return lives; }
@@ -475,10 +509,23 @@ public class GameScreen extends Screen {
 		this.items.endLevel(); // Item System (Team CS)
 
 
-		this.score += LIFE_SCORE * (this.lives - 1);
+		this.score += lifeBonus(this.lives);
 		this.logger.info("Screen cleared with a score of " + this.score);
 
 		return this.returnCode;
+	}
+
+	/**
+	 * Bonus added when the screen ends: LIFE_SCORE for every life left after
+	 * the first. A run that ended with no lives left gets no bonus, instead
+	 * of losing points.
+	 *
+	 * @param lives
+	 *            Lives left when the screen ends.
+	 * @return Points to add, never negative.
+	 */
+	static int lifeBonus(final int lives) {
+		return LIFE_SCORE * Math.max(0, lives - 1);
 	}
 
 	/**
@@ -538,6 +585,17 @@ public class GameScreen extends Screen {
 				}
 				if (moveLeft && !isLeftBorder) {
 					this.ship.moveLeft();
+				}
+
+				// Up and down, only inside the bottom band (HW-105).
+				boolean moveUp = inputManager.isKeyDown(KeyEvent.VK_UP)
+						|| inputManager.isKeyDown(KeyEvent.VK_W);
+				boolean moveDown = inputManager.isKeyDown(KeyEvent.VK_DOWN)
+						|| inputManager.isKeyDown(KeyEvent.VK_S);
+				if (moveUp && !moveDown) {
+					this.ship.moveUp();
+				} else if (moveDown && !moveUp) {
+					this.ship.moveDown();
 				}
 				if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
 					// Count bullets, not trigger pulls: Two Way fires two at
@@ -630,25 +688,35 @@ public class GameScreen extends Screen {
 				this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
 				SoundManager.getInstance().stopBgm();
 				SoundManager.getInstance().playSfx(Sound.VICTORY);
-				this.pendingDiamonds += this.level;
+				if (!this.practiceMode) {
+					this.pendingDiamonds += this.level;
+				} else {
+					if (this.level == 5) {
+						this.pendingDiamonds += BOSS_PRACTICE_LEVEL_5_DIAMONDS;
+					} else if (this.level == 10) {
+						this.pendingDiamonds += BOSS_PRACTICE_LEVEL_10_DIAMONDS;
+					}
+				}
 				collectRemainingCoins();
 				this.pendingDiamonds += this.meteors.collectRemaining(); // VFX TEAM (Effection): collects remaining diamonds from the meteor and adds them to pending
-				showUnlockedAchievements(Core.getAchievementManager()
-						.recordFlawlessLevelCompleted(this.tookDamage));
-				showUnlockedAchievement(Core.getAchievementManager()
-						.recordLevelCompleted(this.level));
-                showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
-
-				showUnlockedAchievement(Core.getAchievementManager()
-						.recordLevelCompleted(
-								this.level,
-								Core.getShipId(this.ship.getType()),
-								true));
-
-				// Last level cleared alive: the game is beaten.
-				if (this.level == Core.getNumLevels())
+				showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
+				if (!this.practiceMode) {
+					showUnlockedAchievements(Core.getAchievementManager()
+							.recordFlawlessLevelCompleted(this.tookDamage));
 					showUnlockedAchievement(Core.getAchievementManager()
-							.recordGameWon(Core.getSelectedShipId()));
+							.recordLevelCompleted(this.level));
+
+					showUnlockedAchievement(Core.getAchievementManager()
+							.recordLevelCompleted(
+									this.level,
+									Core.getShipId(this.ship.getType()),
+									true));
+					
+					// Last level cleared alive: the game is beaten.
+					if (this.level == Core.getNumLevels())
+						showUnlockedAchievement(Core.getAchievementManager()
+								.recordGameWon(Core.getSelectedShipId()));
+				}
 			}
 		}
 
@@ -862,6 +930,10 @@ public class GameScreen extends Screen {
 			((FinalBoss) this.midBoss).resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		}
+		// HUD responses resume with their remaining time.
+		if (this.paused)
+			this.hudFeedback.resumeAfterPause(
+					System.currentTimeMillis() - this.pauseStartedAt);
 		// Item timers (Boost, drops) skip the paused time too (HW-68).
 		this.items.resumeAfterPause();
 		this.paused = false;
@@ -891,6 +963,7 @@ public class GameScreen extends Screen {
 	 */
 	private void draw() {
 		drawManager.initDrawing(this);
+		drawManager.drawLevelBackground(this, this.level);
 
 		if (!this.paused) {
 			// Screen shake: move game world only. AUTHORED BY: VFX TEAM (Effection)
@@ -978,18 +1051,20 @@ public class GameScreen extends Screen {
 		drawManager.drawPointsEffect(this, this.pointsEffect);
 
 		// Interface.
-		drawManager.drawScore(this, this.score);
-		drawManager.drawLives(this, this.lives);
+		long hudNow = this.paused ? this.pauseStartedAt
+				: System.currentTimeMillis();
+		this.hudFeedback.observe(this.score, this.lives, hudNow);
+		drawManager.drawScore(this, this.score,
+				this.hudFeedback.scoreGlow(hudNow));
+		drawManager.drawLives(this, this.lives,
+				this.hudFeedback.lostLifeIndex(hudNow),
+				this.hudFeedback.lostLifeAlpha(hudNow));
 		drawManager.drawLevel(this, this.level);
-		// Explicit Y (36, not the 25 default): the level indicator now
-		// sits centred at y=14, and the coin icon is tall enough that at
-		// y=25 it climbs into the level text above it. Dropping it to its
-		// own row below clears both.
-		drawManager.drawCoinBalance(this, CurrencyManager.getInstance()
-				.getCoins(), 36);
-		drawManager.drawDiamonds(this, engine.DiamondManager.getInstance()
-				.getDiamonds());
-		drawManager.drawHorizontalLine(this, SEPARATION_LINE_HEIGHT - 1);
+		// One row (HW-118): coins and diamonds sit small, left of the score.
+		drawManager.drawHudCurrency(this, CurrencyManager.getInstance()
+				.getCoins(), engine.DiamondManager.getInstance()
+				.getDiamonds(), this.score);
+		drawManager.drawHudSeparator(this, SEPARATION_LINE_HEIGHT - 1);
 		drawManager.drawItemHud(this, this.items); // Item System (Team CS)
 		// Boss health bar: fixed overlay a row below the item HUD slots
 		// (y 43-59, Team CS), so the two never collide.

@@ -59,6 +59,7 @@ public class Frame extends JFrame {
 	public final int setScreen(final Screen screen) {
 		currentScreen = screen;
 		currentScreen.initialize();
+		ScreenTransition.start(System.currentTimeMillis());
 		return currentScreen.run();
 	}
 
