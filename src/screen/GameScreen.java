@@ -508,10 +508,23 @@ public class GameScreen extends Screen {
 		this.items.endLevel(); // Item System (Team CS)
 
 
-		this.score += LIFE_SCORE * (this.lives - 1);
+		this.score += lifeBonus(this.lives);
 		this.logger.info("Screen cleared with a score of " + this.score);
 
 		return this.returnCode;
+	}
+
+	/**
+	 * Bonus added when the screen ends: LIFE_SCORE for every life left after
+	 * the first. A run that ended with no lives left gets no bonus, instead
+	 * of losing points.
+	 *
+	 * @param lives
+	 *            Lives left when the screen ends.
+	 * @return Points to add, never negative.
+	 */
+	static int lifeBonus(final int lives) {
+		return LIFE_SCORE * Math.max(0, lives - 1);
 	}
 
 	/**
