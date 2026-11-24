@@ -60,8 +60,10 @@ import item.ItemAPI.ItemEvent;
  */
 public class GameScreen extends Screen {
 
-	/** Milliseconds until the screen accepts user input. */
-	private static final int INPUT_DELAY = 6000;
+	/** Entry animation uses the slow motion duration from Screen Rules. */
+	private static final int ENTRY_WARP_MS = 600;
+	/** Keep the stage label visible for another 600 ms after the warp. */
+	private static final int STAGE_INTRO_MS = ENTRY_WARP_MS + 600;
 	/** Bonus score for each life remaining at the end of the level. */
 	private static final int LIFE_SCORE = 100;
 	/** Minimum time between bonus ship's appearances. */
@@ -446,7 +448,6 @@ public class GameScreen extends Screen {
 		// Warp In effect, null if not bought or switched off. AUTHORED BY: VFX TEAM (Effection) */
 		if (PurchaseManager.getInstance().isEffectOn("warp_in")) {
 			this.warpIn = new engine.WarpIn();
-			this.warpIn.startLevel(INPUT_DELAY);
 		}
 		if (PurchaseManager.getInstance().isEffectOn("ghost_trail"))		// Ghost Trail, on unless switched off in Customize. AUTHORED BY: VFX TEAM (Effection)
 			this.ghostTrail = new engine.GhostTrail();
@@ -474,10 +475,19 @@ public class GameScreen extends Screen {
 					public void addScore(final int points) { score += points; }
 				});
 
-		// Special input delay / countdown.
+		// Start the stage banner and optional warp together.
 		this.gameStartTime = System.currentTimeMillis();
-		this.inputDelay = Core.getCooldown(INPUT_DELAY);
-		this.inputDelay.reset();
+		if (this.warpIn != null) {
+			this.warpIn.startLevel(ENTRY_WARP_MS);
+		}
+	}
+
+	static boolean stageIntroActive(final long elapsedMillis) {
+		return elapsedMillis < STAGE_INTRO_MS;
+	}
+
+	private boolean stageIntroActive() {
+		return stageIntroActive(System.currentTimeMillis() - this.gameStartTime);
 	}
 
 	/**
@@ -567,7 +577,7 @@ public class GameScreen extends Screen {
 			return;
 		}
 
-		if (this.inputDelay.checkFinished() && !this.levelFinished) {
+		if (!stageIntroActive() && !this.levelFinished) {
 
 			if (!this.ship.isDestroyed()) {
 				boolean moveRight = inputManager.isKeyDown(KeyEvent.VK_RIGHT)
@@ -647,7 +657,7 @@ public class GameScreen extends Screen {
 		}
 
 		// Item System (Team CS): drops fall/expire, pickups, effect timers.
-		this.items.update(this.ship, this.inputDelay.checkFinished()
+		this.items.update(this.ship, !stageIntroActive()
 				&& !this.levelFinished && this.lives > 0
 				&& !this.ship.isDestroyed());
 		manageCollisions();
@@ -1083,14 +1093,8 @@ public class GameScreen extends Screen {
 					"w+s/arrows move, space select, p resume");
 		}
 
-		// Countdown to game start (skipped while paused, so the pause menu
-		// stays visible instead of being painted over).
-		if (!this.paused && !this.inputDelay.checkFinished()) {
-			int countdown = (int) ((INPUT_DELAY
-					- (System.currentTimeMillis()
-					- this.gameStartTime)) / 1000);
-			drawManager.drawCountDown(this, this.level, countdown,
-					this.bonusLife);
+		if (!this.paused && stageIntroActive()) {
+			drawManager.drawStageIntro(this, this.level, this.bonusLife);
 			drawManager.drawHorizontalLine(this, this.height / 2 - this.height
 					/ 12);
 			drawManager.drawHorizontalLine(this, this.height / 2 + this.height
