@@ -232,12 +232,7 @@ public final class WarpIn {
 			setAlpha(g, (float) Math.min(1, lockFade));
 			g.setColor(light);
 			for (int corner = 0; corner < 4; corner++) {
-				int sx = corner % 2 == 0 ? -1 : 1;
-				int sy = corner < 2 ? -1 : 1;
-				int bx = sx < 0 ? x - m : x + w + m - 2;
-				int by = sy < 0 ? y - m : y + h + m - 2;
-				g.fillRect(sx < 0 ? bx : bx - 4, by, 6, 2);
-				g.fillRect(bx, sy < 0 ? by : by - 4, 2, 6);
+				drawBracket(g, x, y, w, h, m, corner);
 			}
 		}
 	}
@@ -314,36 +309,60 @@ public final class WarpIn {
 		double scanRow = rows - scan * rows;
 		Random pixels = new Random(~seed);
 		for (int i = 0; i < image.length; i++)
-			for (int j = 0; j < rows; j++) {
-				double order = (rows - 1 - j) / (double) rows * 0.6 + pixels.nextDouble() * 0.4;
-				int drop = 20 + pixels.nextInt(50);
-				double k = (p - RAIN_START - order * (RAIN_END - RAIN_START - PIXEL_FALL)) / PIXEL_FALL;
-				if (!image[i][j] || k <= 0)
-					continue;
-				int px = x + i * 2;
-				int py = y + j * 2;
-				if (k < 1) {
-					int fy = (int) (py - drop * (1 - ease(k)));
-					setAlpha(g, (float) (0.4 * (1 - k)));
-					g.setColor(light);
-					g.fillRect(px, fy - 9, 2, 9);
-					setAlpha(g, (float) Math.min(1, k * 2));
-					g.setColor(Color.WHITE);
-				} else if (scan > 0 && j >= scanRow) {
-					setAlpha(g, 1f);
-					g.setColor(color);
-				} else {
-					setAlpha(g, (j + (int) (p * 70)) % 3 == 0 ? 0.35f
-							: 0.75f);
-					g.setColor(light);
-				}
-				g.fillRect(px, k < 1 ? (int) (py - drop * (1 - ease(k)))
-						: py, 2, 2);
-			}
+			drawHologramColumn(g, image, color, light, x, y, i, rows, p, scan,
+					scanRow, pixels);
 		if (scan > 0) {
 			setAlpha(g, 0.9f);
 			g.setColor(Color.WHITE);
 			g.fillRect(x - 4, (int) (y + scanRow * 2), w + 8, 1);
+		}
+	}
+
+
+	/** One corner bracket of the lock-on, closed in by {@code m} pixels. */
+	private static void drawBracket(final Graphics2D g, final int x,
+			final int y, final int w, final int h, final int m,
+			final int corner) {
+		int sx = corner % 2 == 0 ? -1 : 1;
+		int sy = corner < 2 ? -1 : 1;
+		int bx = sx < 0 ? x - m : x + w + m - 2;
+		int by = sy < 0 ? y - m : y + h + m - 2;
+		g.fillRect(sx < 0 ? bx : bx - 4, by, 6, 2);
+		g.fillRect(bx, sy < 0 ? by : by - 4, 2, 6);
+	}
+
+	/** One column of the ship: each lit pixel falls, then the scan line
+	 * decides whether it is still a hologram or solid. */
+	private static void drawHologramColumn(final Graphics2D g,
+			final boolean[][] image, final Color color, final Color light,
+			final int x, final int y, final int i, final int rows,
+			final double p, final double scan, final double scanRow,
+			final Random pixels) {
+		for (int j = 0; j < rows; j++) {
+			double order = (rows - 1 - j) / (double) rows * 0.6 + pixels.nextDouble() * 0.4;
+			int drop = 20 + pixels.nextInt(50);
+			double k = (p - RAIN_START - order * (RAIN_END - RAIN_START - PIXEL_FALL)) / PIXEL_FALL;
+			if (!image[i][j] || k <= 0)
+				continue;
+			int px = x + i * 2;
+			int py = y + j * 2;
+			if (k < 1) {
+				int fy = (int) (py - drop * (1 - ease(k)));
+				setAlpha(g, (float) (0.4 * (1 - k)));
+				g.setColor(light);
+				g.fillRect(px, fy - 9, 2, 9);
+				setAlpha(g, (float) Math.min(1, k * 2));
+				g.setColor(Color.WHITE);
+			} else if (scan > 0 && j >= scanRow) {
+				setAlpha(g, 1f);
+				g.setColor(color);
+			} else {
+				setAlpha(g, (j + (int) (p * 70)) % 3 == 0 ? 0.35f
+						: 0.75f);
+				g.setColor(light);
+			}
+			g.fillRect(px, k < 1 ? (int) (py - drop * (1 - ease(k)))
+					: py, 2, 2);
 		}
 	}
 
