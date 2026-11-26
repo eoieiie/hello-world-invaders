@@ -237,6 +237,18 @@ public final class WarpIn {
 		}
 	}
 
+	/** One corner bracket of the lock-on, closed in by {@code m} pixels. */
+	private static void drawBracket(final Graphics2D g, final int x,
+			final int y, final int w, final int h, final int m,
+			final int corner) {
+		int sx = corner % 2 == 0 ? -1 : 1;
+		int sy = corner < 2 ? -1 : 1;
+		int bx = sx < 0 ? x - m : x + w + m - 2;
+		int by = sy < 0 ? y - m : y + h + m - 2;
+		g.fillRect(sx < 0 ? bx : bx - 4, by, 6, 2);
+		g.fillRect(bx, sy < 0 ? by : by - 4, 2, 6);
+	}
+
 	/** Stage 3: the beam strikes down from the rift, pulses, then thins. */
 	private static void drawBeam(final Graphics2D g, final Color color,
 			final Color light, final double cx, final double riftY,
@@ -264,8 +276,6 @@ public final class WarpIn {
 		}
 	}
 
-	/** Stage 4: sparks swirl in and the ship rains in as a hologram that a
-	 * scan line turns solid from the bottom up. */
 	/** Stage 4: sparks swirl in and the ship rains in as a hologram that a
 	 * scan line turns solid from the bottom up. */
 	private static void drawRain(final Graphics2D g,
@@ -316,19 +326,6 @@ public final class WarpIn {
 			g.setColor(Color.WHITE);
 			g.fillRect(x - 4, (int) (y + scanRow * 2), w + 8, 1);
 		}
-	}
-
-
-	/** One corner bracket of the lock-on, closed in by {@code m} pixels. */
-	private static void drawBracket(final Graphics2D g, final int x,
-			final int y, final int w, final int h, final int m,
-			final int corner) {
-		int sx = corner % 2 == 0 ? -1 : 1;
-		int sy = corner < 2 ? -1 : 1;
-		int bx = sx < 0 ? x - m : x + w + m - 2;
-		int by = sy < 0 ? y - m : y + h + m - 2;
-		g.fillRect(sx < 0 ? bx : bx - 4, by, 6, 2);
-		g.fillRect(bx, sy < 0 ? by : by - 4, 2, 6);
 	}
 
 	/** One column of the ship: each lit pixel falls, then the scan line
