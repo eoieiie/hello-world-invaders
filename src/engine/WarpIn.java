@@ -168,7 +168,7 @@ public final class WarpIn {
 	}
 
 	/** Draws one moment (p = 0 to 1) of the warp, in order. */
-	private static void drawWarp(final Graphics2D g, final boolean[][] image,
+	static void drawWarp(final Graphics2D g, final boolean[][] image,
 			final int x, final int y, final Color color, final int topY,
 			final double p, final long seed) {
 		Composite oldComposite = g.getComposite();
@@ -180,7 +180,22 @@ public final class WarpIn {
 		double cx = x + w / 2.0;
 		double riftY = topY + 10;
 
-		// 1. Rift: a glowing tear that opens, crackles and closes.
+		drawRift(g, color, light, cx, riftY, p, seed);
+		drawLockOn(g, light, x, y, w, h, p);
+		drawBeam(g, color, light, cx, riftY, y, w, h, p);
+		drawRain(g, image, color, light, x, y, cx, w, h, p, seed);
+		if (p >= IMPACT)
+			drawImpact(g, image, x, y, color, light,(p - IMPACT) / (1 - IMPACT), seed);
+
+		g.setComposite(oldComposite);
+		g.setPaint(oldPaint);
+		g.setStroke(oldStroke);
+	}
+
+	/** Stage 1: a glowing tear that opens, crackles and closes. */
+	private static void drawRift(final Graphics2D g, final Color color,
+			final Color light, final double cx, final double riftY,
+			final double p, final long seed) {
 		double open = p < IMPACT ? ease((p - 0.04) / (STRIKE_START - 0.04))
 				: 1 - ease((p - IMPACT) / 0.18);
 		if (open > 0) {
@@ -204,8 +219,12 @@ public final class WarpIn {
 				g.fillRect((int) (cx + Math.cos(a) * (rw / 2 + 2)),(int) (riftY + Math.sin(a) * (rh / 2 + 2)), 2, 2);
 			}
 		}
+	}
 
-		// 2. Lock-on: corner brackets blink and close in, then fade.
+	/** Stage 2: corner brackets blink and close in, then fade. */
+	private static void drawLockOn(final Graphics2D g, final Color light,
+			final int x, final int y, final int w, final int h,
+			final double p) {
 		double lockFade = 1 - (p - LOCK_END) / (STRIKE_END - LOCK_END);
 		double q = Math.min(1, p / LOCK_END);
 		if (lockFade > 0 && (q >= 1 || ((int) (q * 10)) % 2 == 0)) {
@@ -213,16 +232,27 @@ public final class WarpIn {
 			setAlpha(g, (float) Math.min(1, lockFade));
 			g.setColor(light);
 			for (int corner = 0; corner < 4; corner++) {
-				int sx = corner % 2 == 0 ? -1 : 1;
-				int sy = corner < 2 ? -1 : 1;
-				int bx = sx < 0 ? x - m : x + w + m - 2;
-				int by = sy < 0 ? y - m : y + h + m - 2;
-				g.fillRect(sx < 0 ? bx : bx - 4, by, 6, 2);
-				g.fillRect(bx, sy < 0 ? by : by - 4, 2, 6);
+				drawBracket(g, x, y, w, h, m, corner);
 			}
 		}
+	}
 
-		// 3. Beam: strikes down from the rift, pulses, then thins away.
+	/** One corner bracket of the lock-on, closed in by {@code m} pixels. */
+	private static void drawBracket(final Graphics2D g, final int x,
+			final int y, final int w, final int h, final int m,
+			final int corner) {
+		int sx = corner % 2 == 0 ? -1 : 1;
+		int sy = corner < 2 ? -1 : 1;
+		int bx = sx < 0 ? x - m : x + w + m - 2;
+		int by = sy < 0 ? y - m : y + h + m - 2;
+		g.fillRect(sx < 0 ? bx : bx - 4, by, 6, 2);
+		g.fillRect(bx, sy < 0 ? by : by - 4, 2, 6);
+	}
+
+	/** Stage 3: the beam strikes down from the rift, pulses, then thins. */
+	private static void drawBeam(final Graphics2D g, final Color color,
+			final Color light, final double cx, final double riftY,
+			final int y, final int w, final int h, final double p) {
 		if (p >= STRIKE_START && p < IMPACT + 0.1) {
 			double bottom = riftY + (y + h - riftY) * ease((p - STRIKE_START) / (STRIKE_END - STRIKE_START));
 			double fade = p < IMPACT ? 1 : 1 - (p - IMPACT) / 0.1;
@@ -244,68 +274,93 @@ public final class WarpIn {
 			if (p < STRIKE_END + 0.03)
 				g.fillRect((int) cx - 3, (int) bottom - 3, 6, 6);
 		}
+	}
 
-		// 4. Sparks swirl in, and the ship rains in as a hologram that a
-		// scan line turns solid from the bottom up.
-		if (p >= RAIN_START && p < IMPACT) {
-			Random sparks = new Random(seed);
-			for (int i = 0; i < 26; i++) {
-				double begin = RAIN_START + sparks.nextDouble() * 0.24;
-				double a0 = sparks.nextDouble() * Math.PI * 2;
-				double r0 = 34 + sparks.nextDouble() * 44;
-				double k = (p - begin) / 0.18;
-				if (k < 0 || k > 1)
-					continue;
-				double r = r0 * (1 - ease(k));
-				setAlpha(g, (float) Math.sin(Math.PI * k));
-				g.setColor(i % 3 == 0 ? Color.WHITE : light);
-				g.fillRect((int) (cx + Math.cos(a0 + k * 2.6) * r),(int) (y + h / 2 + Math.sin(a0 + k * 2.6) * r * 0.55),2, 2);
-			}
-			int rows = image[0].length;
-			double scan = (p - SCAN_START) / (IMPACT - SCAN_START);
-			double scanRow = rows - scan * rows;
-			Random pixels = new Random(~seed);
-			for (int i = 0; i < image.length; i++)
-				for (int j = 0; j < rows; j++) {
-					double order = (rows - 1 - j) / (double) rows * 0.6 + pixels.nextDouble() * 0.4;
-					int drop = 20 + pixels.nextInt(50);
-					double k = (p - RAIN_START - order * (RAIN_END - RAIN_START - PIXEL_FALL)) / PIXEL_FALL;
-					if (!image[i][j] || k <= 0)
-						continue;
-					int px = x + i * 2;
-					int py = y + j * 2;
-					if (k < 1) {
-						int fy = (int) (py - drop * (1 - ease(k)));
-						setAlpha(g, (float) (0.4 * (1 - k)));
-						g.setColor(light);
-						g.fillRect(px, fy - 9, 2, 9);
-						setAlpha(g, (float) Math.min(1, k * 2));
-						g.setColor(Color.WHITE);
-					} else if (scan > 0 && j >= scanRow) {
-						setAlpha(g, 1f);
-						g.setColor(color);
-					} else {
-						setAlpha(g, (j + (int) (p * 70)) % 3 == 0 ? 0.35f
-								: 0.75f);
-						g.setColor(light);
-					}
-					g.fillRect(px, k < 1 ? (int) (py - drop * (1 - ease(k)))
-							: py, 2, 2);
-				}
-			if (scan > 0) {
-				setAlpha(g, 0.9f);
-				g.setColor(Color.WHITE);
-				g.fillRect(x - 4, (int) (y + scanRow * 2), w + 8, 1);
-			}
+	/** Stage 4: sparks swirl in and the ship rains in as a hologram that a
+	 * scan line turns solid from the bottom up. */
+	private static void drawRain(final Graphics2D g,
+			final boolean[][] image, final Color color, final Color light,
+			final int x, final int y, final double cx, final int w,
+			final int h, final double p, final long seed) {
+		if (p < RAIN_START || p >= IMPACT) {
+			return;
 		}
+		drawSparks(g, light, cx, y, h, p, seed);
+		drawHologram(g, image, color, light, x, y, w, p, seed);
+	}
 
-		// 5. Impact.
-		if (p >= IMPACT)
-			drawImpact(g, image, x, y, color, light,(p - IMPACT) / (1 - IMPACT), seed);
+	/** The swirl of sparks that gathers before the ship arrives. */
+	private static void drawSparks(final Graphics2D g, final Color light,
+			final double cx, final int y, final int h, final double p,
+			final long seed) {
+		Random sparks = new Random(seed);
+		for (int i = 0; i < 26; i++) {
+			double begin = RAIN_START + sparks.nextDouble() * 0.24;
+			double a0 = sparks.nextDouble() * Math.PI * 2;
+			double r0 = 34 + sparks.nextDouble() * 44;
+			double k = (p - begin) / 0.18;
+			if (k < 0 || k > 1)
+				continue;
+			double r = r0 * (1 - ease(k));
+			setAlpha(g, (float) Math.sin(Math.PI * k));
+			g.setColor(i % 3 == 0 ? Color.WHITE : light);
+			g.fillRect((int) (cx + Math.cos(a0 + k * 2.6) * r),(int) (y + h / 2 + Math.sin(a0 + k * 2.6) * r * 0.55),2, 2);
+		}
+	}
 
-		g.setComposite(oldComposite);
-		g.setPaint(oldPaint);
-		g.setStroke(oldStroke);
+	/** The ship falling in pixel by pixel, then turned solid by the scan
+	 * line running up it. */
+	private static void drawHologram(final Graphics2D g,
+			final boolean[][] image, final Color color, final Color light,
+			final int x, final int y, final int w, final double p,
+			final long seed) {
+		int rows = image[0].length;
+		double scan = (p - SCAN_START) / (IMPACT - SCAN_START);
+		double scanRow = rows - scan * rows;
+		Random pixels = new Random(~seed);
+		for (int i = 0; i < image.length; i++)
+			drawHologramColumn(g, image, color, light, x, y, i, rows, p, scan,
+					scanRow, pixels);
+		if (scan > 0) {
+			setAlpha(g, 0.9f);
+			g.setColor(Color.WHITE);
+			g.fillRect(x - 4, (int) (y + scanRow * 2), w + 8, 1);
+		}
+	}
+
+	/** One column of the ship: each lit pixel falls, then the scan line
+	 * decides whether it is still a hologram or solid. */
+	private static void drawHologramColumn(final Graphics2D g,
+			final boolean[][] image, final Color color, final Color light,
+			final int x, final int y, final int i, final int rows,
+			final double p, final double scan, final double scanRow,
+			final Random pixels) {
+		for (int j = 0; j < rows; j++) {
+			double order = (rows - 1 - j) / (double) rows * 0.6 + pixels.nextDouble() * 0.4;
+			int drop = 20 + pixels.nextInt(50);
+			double k = (p - RAIN_START - order * (RAIN_END - RAIN_START - PIXEL_FALL)) / PIXEL_FALL;
+			if (!image[i][j] || k <= 0)
+				continue;
+			int px = x + i * 2;
+			int py = y + j * 2;
+			if (k < 1) {
+				int fy = (int) (py - drop * (1 - ease(k)));
+				setAlpha(g, (float) (0.4 * (1 - k)));
+				g.setColor(light);
+				g.fillRect(px, fy - 9, 2, 9);
+				setAlpha(g, (float) Math.min(1, k * 2));
+				g.setColor(Color.WHITE);
+			} else if (scan > 0 && j >= scanRow) {
+				setAlpha(g, 1f);
+				g.setColor(color);
+			} else {
+				setAlpha(g, (j + (int) (p * 70)) % 3 == 0 ? 0.35f
+						: 0.75f);
+				g.setColor(light);
+			}
+			g.fillRect(px, k < 1 ? (int) (py - drop * (1 - ease(k)))
+					: py, 2, 2);
+		}
 	}
 
 	/**
