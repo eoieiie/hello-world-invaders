@@ -285,6 +285,12 @@ public final class ItemSystem {
         lastUpdateNanos = -1;
     }
 
+    /** HW-130: called when a level is cleared alive. Drops still on the field are collected. */
+    public void collectRemainingDrops() {
+        if (!isLevelActive()) return;
+        manager.collectRemainingDrops();
+    }
+
     /** Called when an enemy is defeated. Rolls a drop at the enemy's center. */
     public void onEnemyDefeated(Entity enemy, boolean special) {
         if (!isLevelActive()) return;
@@ -444,10 +450,12 @@ public final class ItemSystem {
                 logger.info("Item drop disappeared: " + name + ".");
                 break;
             case ITEM_CONVERTED: {
-                ItemInfo magnet = equippedThisRun();
-                int points = magnet == null ? 0 : magnet.magnitude.intValue();
+                // From the magnet, or (HW-130) a maxed run stack collected at level clear.
+                // Both use the convert score from the balance file (the magnet's magnitude is
+                // the same value, see ItemDefinitions).
+                int points = balance.magnetConvertScore;
                 hooks.addScore(points);
-                logger.info("Magnet: " + name + " could not be kept, +" + points + " score.");
+                logger.info("Converted: " + name + " could not be kept, +" + points + " score.");
                 showNotice(name + " +" + points);
                 break;
             }

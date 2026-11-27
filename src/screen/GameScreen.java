@@ -708,6 +708,7 @@ public class GameScreen extends Screen {
 					}
 				}
 				collectRemainingCoins();
+				this.items.collectRemainingDrops(); // HW-130: items still falling are collected too
 				this.pendingDiamonds += this.meteors.collectRemaining(); // VFX TEAM (Effection): collects remaining diamonds from the meteor and adds them to pending
 				showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
 				if (!this.practiceMode) {
