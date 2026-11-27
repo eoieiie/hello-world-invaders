@@ -257,59 +257,77 @@ class ItemDefinitions {
             requireValid(kinds.add(item.effectKind), "duplicate effect kind: " + item.effectKind);
             requireValid(item.supportedGrantTimings.contains(GrantTiming.NOW),
                 "NOW timing required: " + item.itemId);
-
-            switch (item.effectKind) {
-                case LIFE:
-                    requireDefinition(item, item.activationMode == ActivationMode.ON_PICKUP
-                        && item.durationKind == DurationKind.INSTANT
-                        && item.durationMillis == null && item.charges == null && item.magnitude == null
-                        && item.maxStacks == null
-                        && item.supportedGrantTimings.equals(EnumSet.of(GrantTiming.NOW)));
-                    break;
-                case SHIELD:
-                    requireDefinition(item, item.activationMode == ActivationMode.MANUAL
-                        && item.durationKind == DurationKind.TIMED
-                        && item.durationMillis != null
-                        && item.charges != null && item.magnitude == null && item.maxStacks == null
-                        && item.supportedGrantTimings.equals(EnumSet.of(GrantTiming.NOW)));
-                    break;
-                case RAPID_FIRE:
-                    requireDefinition(item, isRunStack(item));
-                    break;
-                case BULLET_SPEED:
-                    requireDefinition(item, isRunStack(item));
-                    break;
-                case FREEZE:
-                    requireDefinition(item, item.activationMode == ActivationMode.MANUAL
-                        && item.durationKind == DurationKind.TIMED
-                        && item.durationMillis != null
-                        && item.charges == null && item.magnitude == null && item.maxStacks == null
-                        && item.supportedGrantTimings.equals(EnumSet.of(GrantTiming.NOW)));
-                    break;
-                case BOOST:
-                case SCORE_BOOST:
-                    requireDefinition(item, item.activationMode == ActivationMode.MANUAL
-                        && item.durationKind == DurationKind.TIMED
-                        && item.durationMillis != null
-                        && item.charges == null && item.magnitude != null && item.magnitude > 1.0
-                        && item.maxStacks == null
-                        && item.supportedGrantTimings.equals(EnumSet.of(GrantTiming.NOW)));
-                    break;
-                case EXTRA_SLOTS:
-                case MAGNET:
-                case MAX_LIFE:
-                case LONG_LASTING:
-                    requireDefinition(item, isEquipped(item));
-                    break;
-                default:
-                    throw new IllegalArgumentException("unsupported effect kind: " + item.effectKind);
-            }
+            requireDefinition(item, followsRules(item));
         }
 
         requireValid(kinds.size() == EffectKind.values().length, "missing effect definition");
     }
 
-    private boolean isRunStack(ItemInfo item) {
+    /**
+     * Whether a definition has the activation, duration and values its effect kind needs.
+     * Package-private so the rules can be unit tested one by one.
+     *
+     * @throws IllegalArgumentException for an effect kind without a rule
+     */
+    static boolean followsRules(ItemInfo item) {
+        switch (item.effectKind) {
+            case LIFE:
+                return isInstantLife(item);
+            case SHIELD:
+                return isShield(item);
+            case RAPID_FIRE:
+            case BULLET_SPEED:
+                return isRunStack(item);
+            case FREEZE:
+                return isFreeze(item);
+            case BOOST:
+            case SCORE_BOOST:
+                return isTimedBoost(item);
+            case EXTRA_SLOTS:
+            case MAGNET:
+            case MAX_LIFE:
+            case LONG_LASTING:
+                return isEquipped(item);
+            default:
+                throw new IllegalArgumentException("unsupported effect kind: " + item.effectKind);
+        }
+    }
+
+    /** LIFE: picked up and used at once, with no duration or values. */
+    private static boolean isInstantLife(ItemInfo item) {
+        return item.activationMode == ActivationMode.ON_PICKUP
+            && item.durationKind == DurationKind.INSTANT
+            && item.durationMillis == null && item.charges == null
+            && item.magnitude == null && item.maxStacks == null
+            && grantsOnlyNow(item);
+    }
+
+    /** SHIELD: a manual timed item with charges and no magnitude. */
+    private static boolean isShield(ItemInfo item) {
+        return isManualTimed(item) && item.charges != null && item.magnitude == null;
+    }
+
+    /** FREEZE: a manual timed item with no charges or magnitude. */
+    private static boolean isFreeze(ItemInfo item) {
+        return isManualTimed(item) && item.charges == null && item.magnitude == null;
+    }
+
+    /** BOOST and SCORE_BOOST: a manual timed item whose magnitude is a multiplier above 1. */
+    private static boolean isTimedBoost(ItemInfo item) {
+        return isManualTimed(item) && item.charges == null
+            && item.magnitude != null && item.magnitude > 1.0;
+    }
+
+    /** Shared part of the manual timed items: activated by the player, lasts a set time, never stacks. */
+    private static boolean isManualTimed(ItemInfo item) {
+        return item.activationMode == ActivationMode.MANUAL
+            && item.durationKind == DurationKind.TIMED
+            && item.durationMillis != null && item.maxStacks == null
+            && grantsOnlyNow(item);
+    }
+
+    /** RAPID_FIRE and BULLET_SPEED: picked up, stack until the run ends, can be granted next level. */
+    private static boolean isRunStack(ItemInfo item) {
         return item.activationMode == ActivationMode.ON_PICKUP
             && item.durationKind == DurationKind.UNTIL_RUN_END
             && item.durationMillis == null && item.charges == null
@@ -319,12 +337,17 @@ class ItemDefinitions {
     }
 
     /** Equipped items: EQUIPPED + WHILE_EQUIPPED, one value in magnitude, never dropped or stacked. */
-    private boolean isEquipped(ItemInfo item) {
+    private static boolean isEquipped(ItemInfo item) {
         return item.activationMode == ActivationMode.EQUIPPED
             && item.durationKind == DurationKind.WHILE_EQUIPPED
             && item.durationMillis == null && item.charges == null
             && item.magnitude != null && item.maxStacks == null
-            && item.supportedGrantTimings.equals(EnumSet.of(GrantTiming.NOW));
+            && grantsOnlyNow(item);
+    }
+
+    /** Whether the item can only be granted right away (not on the next level). */
+    private static boolean grantsOnlyNow(ItemInfo item) {
+        return item.supportedGrantTimings.equals(EnumSet.of(GrantTiming.NOW));
     }
 
     /** Extra share of a multiplier as a percent without trailing zeros: 1.5 -> "50". */
