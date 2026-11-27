@@ -20,6 +20,15 @@ import item.ItemAPI.ItemInfo;
 /** Checks the built-in item catalog and the rules each definition must follow. */
 class ItemDefinitionsTest {
 
+    private static final Set<GrantTiming> NOW = EnumSet.of(GrantTiming.NOW);
+
+    private static ItemInfo item(ActivationMode mode, EffectKind kind, DurationKind duration,
+            Long millis, Integer charges, Double magnitude, Integer maxStacks,
+            Set<GrantTiming> timings) {
+        return new ItemInfo("test", "Test", "Test item", "test", mode, kind, duration,
+            millis, charges, magnitude, maxStacks, timings);
+    }
+
     @Test
     void defaultCatalogPassesValidation() {
         assertDoesNotThrow(() -> new ItemDefinitions(ItemBalance.defaults()));
@@ -47,15 +56,6 @@ class ItemDefinitionsTest {
 
     // ---------- rules for each effect kind ----------
 
-    private static final Set<GrantTiming> NOW = EnumSet.of(GrantTiming.NOW);
-
-    private static ItemInfo item(ActivationMode mode, EffectKind kind, DurationKind duration,
-            Long millis, Integer charges, Double magnitude, Integer maxStacks,
-            Set<GrantTiming> timings) {
-        return new ItemInfo("test", "Test", "Test item", "test", mode, kind, duration,
-            millis, charges, magnitude, maxStacks, timings);
-    }
-
     @Test
     void everyDefaultDefinitionFollowsItsRule() {
         for (ItemInfo item : new ItemDefinitions(ItemBalance.defaults()).all())
@@ -73,6 +73,13 @@ class ItemDefinitionsTest {
     void shieldWithoutChargesIsRejected() {
         ItemInfo shield = item(ActivationMode.MANUAL, EffectKind.SHIELD, DurationKind.TIMED,
             5000L, null, null, null, NOW);
+        assertFalse(ItemDefinitions.followsRules(shield));
+    }
+
+    @Test
+    void shieldThatAlsoAllowsNextLevelIsRejected() {
+        ItemInfo shield = item(ActivationMode.MANUAL, EffectKind.SHIELD, DurationKind.TIMED,
+            5000L, 2, null, null, EnumSet.of(GrantTiming.NOW, GrantTiming.NEXT_LEVEL));
         assertFalse(ItemDefinitions.followsRules(shield));
     }
 
