@@ -183,11 +183,36 @@ public final class ItemManager {
                 continue;
             }
             // The DropSystem contract guarantees contacts stay valid during the same serial call.
-            drops.completePickup(contact.dropId);
-            emit(EventType.ITEM_COLLECTED, contact.item.itemId, contact.dropId,
-                effectId(acquired.effect), acquired.slot, null, null, null, null, contact.bounds);
-            emitStarted(acquired.effect, null);
+            collect(contact, acquired);
         }
+    }
+
+    /**
+     * HW-130: called when a level is cleared alive. Collects every drop still on the field as if
+     * the player had touched it, so the last kills' drops aren't lost. A run stack already at its
+     * limit becomes score (ITEM_CONVERTED). Anything else that can't be kept, such as a manual item
+     * with a full inventory, stays on the field and is removed by endLevel().
+     */
+    void collectRemainingDrops() {
+        requireActive();
+        for (DropView drop : drops.snapshot()) {
+            Acquisition acquired = acquire(drop.item);
+            if (acquired.failure == null) {
+                collect(drop, acquired);
+            } else if (drop.item.durationKind == DurationKind.UNTIL_RUN_END) {
+                drops.completePickup(drop.dropId);
+                emit(EventType.ITEM_CONVERTED, drop.item.itemId, drop.dropId,
+                    null, null, null, null, null, null, drop.bounds);
+            }
+        }
+    }
+
+    /** Removes a drop that was acquired and reports it as collected. */
+    private void collect(DropView drop, Acquisition acquired) {
+        drops.completePickup(drop.dropId);
+        emit(EventType.ITEM_COLLECTED, drop.item.itemId, drop.dropId,
+            effectId(acquired.effect), acquired.slot, null, null, null, null, drop.bounds);
+        emitStarted(acquired.effect, null);
     }
 
     UseResult useSlot(int slot) {
