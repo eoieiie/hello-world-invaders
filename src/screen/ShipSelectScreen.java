@@ -753,7 +753,20 @@ public class ShipSelectScreen extends Screen {
 		Rectangle last = rowArea(Row.EFFECT);
 		int lineHeight = drawManager.getSmallLineHeight();
 		int y = last.y + last.height + 22;
+		drawStats(y, lineHeight);
 
+		y += (lineHeight + 4) * 3 + 14;
+		if (this.row == Row.SKIN
+				&& this.availableSkins[this.skinIndex].isLimited())
+			drawCentred("LIMITED EDITION", y - lineHeight - 4,
+					new Color(255, 120, 200));
+		Status status = status();
+		drawCentred(status.text.toUpperCase(), y, status.color);
+		drawDescription(y + lineHeight + 4, lineHeight);
+	}
+
+	/** Speed, fire rate and bullets of the browsed ship. */
+	private void drawStats(final int y, final int lineHeight) {
 		ShipType type = this.availableShips[this.shipIndex];
 		double fireRate = type.getBulletsPerShot() * 1000.0
 				/ type.getShootingInterval();
@@ -764,67 +777,74 @@ public class ShipSelectScreen extends Screen {
 		drawStat("BULLETS", type.getBulletsPerShot() / 2.0,
 				Integer.toString(type.getBulletsPerShot()),
 				y + (lineHeight + 4) * 2);
+	}
 
-		y += (lineHeight + 4) * 3 + 14;
-		String status;
-		Color color;
+	/** Text and colour of the line under the stats. */
+	private static final class Status {
+		private final String text;
+		private final Color color;
+
+		Status(final String text, final Color color) {
+			this.text = text;
+			this.color = color;
+		}
+	}
+
+	/** @return What the selected row's choice means. */
+	private Status status() {
+		PurchaseManager loadout = PurchaseManager.getInstance();
 		if (this.row == Row.EFFECT && browsedEffect() != null
-				&& isUnlocked(this.row)) {
+				&& isUnlocked(this.row))
 			// AUTHORED BY: VFX TEAM (Effection)
-			ShopItem effect = browsedEffect();
-			boolean on = PurchaseManager.getInstance().isEffectOn(effect);
-			status = effect.getName() + (on
-					? " is on - space to switch off"
-					: " is off - space to switch on");
-			color = on ? Color.GREEN : Color.GRAY;
-		} else if (this.row == Row.UPGRADE && isUnlocked(this.row)) {
-			boolean on = PurchaseManager.getInstance().isUpgradeOn(
-					browsedUpgrade().getRef());
-			status = browsedUpgrade().getName() + (on
-					? " is on - space to switch off"
-					: " is off - space to switch on");
-			color = on ? Color.GREEN : Color.GRAY;
-		} else if (isUnlocked(this.row)) {
-			status = this.row == Row.UPGRADE ? "No upgrades in the shop"
+			return switchStatus(browsedEffect(),
+					loadout.isEffectOn(browsedEffect()));
+		if (this.row == Row.UPGRADE && isUnlocked(this.row))
+			return switchStatus(browsedUpgrade(),
+					loadout.isUpgradeOn(browsedUpgrade().getRef()));
+		if (isUnlocked(this.row))
+			return new Status(this.row == Row.UPGRADE
+					? "No upgrades in the shop"
 					: this.row == Row.EFFECT ? "No effects in the shop yet"
-					: choiceName(this.row) + " is equipped";
-			color = browsedEffect() == null && this.row == Row.EFFECT
-					? Color.GRAY : Color.GREEN;
-		} else {
-			ShopItem entry = shopEntry(this.row);
-			if (entry != null && !ShopCatalog.isOnSale(entry,
-					java.time.LocalDate.now()))
-				status = "Limited edition - no longer sold";
-			else
-				status = "Locked - buy it in the Shop"
-						+ (entry == null ? "" : " for " + priceText(entry));
-			color = LOCKED;
-		}
-		if (this.row == Row.SKIN
-				&& this.availableSkins[this.skinIndex].isLimited()) {
-			String tag = "LIMITED EDITION";
-			drawManager.drawSmallString(tag, this.width / 2
-							- drawManager.getSmallStringWidth(tag) / 2,
-					y - lineHeight - 4, new Color(255, 120, 200));
-		}
-		status = status.toUpperCase();
-		drawManager.drawSmallString(status, this.width / 2
-				- drawManager.getSmallStringWidth(status) / 2, y, color);
+					: choiceName(this.row) + " is equipped",
+					browsedEffect() == null && this.row == Row.EFFECT
+							? Color.GRAY : Color.GREEN);
+		ShopItem entry = shopEntry(this.row);
+		if (entry != null && !ShopCatalog.isOnSale(entry,
+				java.time.LocalDate.now()))
+			return new Status("Limited edition - no longer sold", LOCKED);
+		return new Status("Locked - buy it in the Shop"
+				+ (entry == null ? "" : " for " + priceText(entry)), LOCKED);
+	}
 
-		if (this.row == Row.UPGRADE || this.row == Row.EFFECT) {
-			ShopItem upgrade = this.row == Row.UPGRADE ? browsedUpgrade()
-					: browsedEffect();
-			if (upgrade != null) {
-				int lineY = y + lineHeight + 4;
-				for (String line : wrap(upgrade.getDescription().toUpperCase(),
-						this.width - MARGIN * 2)) {
-					drawManager.drawSmallString(line, this.width / 2
-									- drawManager.getSmallStringWidth(line) / 2,
-							lineY, Color.GRAY);
-					lineY += lineHeight;
-				}
-			}
+	/** @return "... is on" or "... is off" for an owned upgrade or effect. */
+	private static Status switchStatus(final ShopItem item, final boolean on) {
+		return new Status(item.getName() + (on
+				? " is on - space to switch off"
+				: " is off - space to switch on"),
+				on ? Color.GREEN : Color.GRAY);
+	}
+
+	/** Wrapped description of the browsed upgrade or effect. */
+	private void drawDescription(final int top, final int lineHeight) {
+		if (this.row != Row.UPGRADE && this.row != Row.EFFECT)
+			return;
+		ShopItem item = this.row == Row.UPGRADE ? browsedUpgrade()
+				: browsedEffect();
+		if (item == null)
+			return;
+		int lineY = top;
+		for (String line : wrap(item.getDescription().toUpperCase(),
+				this.width - MARGIN * 2)) {
+			drawCentred(line, lineY, Color.GRAY);
+			lineY += lineHeight;
 		}
+	}
+
+	/** Small text centred across the screen. */
+	private void drawCentred(final String text, final int y,
+			final Color color) {
+		drawManager.drawSmallString(text, this.width / 2
+				- drawManager.getSmallStringWidth(text) / 2, y, color);
 	}
 
 	/**
