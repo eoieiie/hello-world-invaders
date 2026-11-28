@@ -976,91 +976,148 @@ public class GameScreen extends Screen {
 		drawManager.initDrawing(this);
 		drawManager.drawLevelBackground(this, this.level);
 
-		if (!this.paused) {
-			// Screen shake: move game world only. AUTHORED BY: VFX TEAM (Effection)
-			this.screenShake.update();
-			drawManager.setWorldOffset(this.screenShake.getOffsetX(),
-					this.screenShake.getOffsetY());
-
-			// Ship, enemies, bullets and falling coins are hidden while
-			// paused, so the pause menu isn't cluttered by the frozen
-			// battlefield behind it - only the top HUD stays visible.
-			// Warp In draws the ship itself while it beams in. AUTHORED BY: VFX TEAM (Effection)
-			boolean warping = this.warpIn != null
-					&& this.warpIn.update(this.ship, this.lives > 0);
-			// Ghost Trail behind the ship, gone once the level ends (game over or level clear).
-			// AUTHORED BY: VFX TEAM (Effection)
-			if (this.ghostTrail != null && (this.levelFinished || warping))
-				this.ghostTrail.clear();
-			else if (this.ghostTrail != null)
-				this.ghostTrail.draw(drawManager, this.ship,
-						this.skin.colorAt(System.currentTimeMillis()),
-						engine.GhostTrail.isBoosting(this.items));
-			if (!warping) {
-				if (this.ship.isDestroyed() && this.lives > 0) {
-					// A hit that was not the last life: the ship blinks
-					// instead of showing the wreck, since it comes back.
-					if (RespawnBlink.isVisible(System.currentTimeMillis()
-							- this.shipHitAt))
-						drawManager.drawSprite(this.ship.getIdleSprite(),
-								this.ship.getPositionX(),
-								this.ship.getPositionY(), this.ship.getColor());
-				} else
-					drawManager.drawEntity(this.ship, this.ship.getPositionX(),
-							this.ship.getPositionY());
-			}
-			drawManager.drawWarpIn(this.warpIn, this.ship,
-					this.skin.colorAt(System.currentTimeMillis()),
-					SEPARATION_LINE_HEIGHT);
-			if (this.warpIn != null && this.warpIn.takeImpact())
-				this.screenShake.trigger();
-			drawManager.drawItemShield(this.ship, this.items); // Item System (Team CS)
-			if (this.enemyShipSpecial != null)
-				drawManager.drawEntity(this.enemyShipSpecial,
-						this.enemyShipSpecial.getPositionX(),
-						this.enemyShipSpecial.getPositionY());
-
-			if (this.midBoss != null) {
-				if (this.midBoss.isVisible())
-					drawManager.drawEntity((Entity) this.midBoss,
-							this.midBoss.getPositionX(), this.midBoss.getPositionY());
-				this.midBoss.drawWarnings(drawManager);
-			} else {
-				this.enemyShipFormation.draw();
-			}
-
-			// Hit sparkles move with the game world.
-			drawManager.drawParticles(this, this.particles,
-					SEPARATION_LINE_HEIGHT);
-			drawManager.drawLightningChain(this.lightningChain);
-
-			for (Bullet bullet : this.bullets) {
-				// Comet trail, player bullets only. AUTHORED BY: VFX TEAM (Effection)
-				if (this.cometTrailOn && bullet.getSpeed() < 0)
-					drawManager.drawBulletTrail(bullet);
-				drawManager.drawEntity(bullet, bullet.getPositionX(),
-						bullet.getPositionY());
-			}
-			// Stop shake offset before full-screen dim.
-			drawManager.setWorldOffset(0, 0);
-			// Damage dim (under HUD, so score/lives stay bright). AUTHORED BY: VFX TEAM (Effection)
-			drawManager.drawDamageDim(this, this.damageDim);
-
-			// Coins are part of the game world, so they shake too.
-			drawManager.setWorldOffset(this.screenShake.getOffsetX(),
-					this.screenShake.getOffsetY());
-			for (Coin coin : this.coins)
-				drawManager.drawCoin(coin, coin.getPositionX(),
-						coin.getPositionY());
-			this.meteors.draw(drawManager); // VFX TEAM (Effection): draws the meteor and its diamonds
-			drawManager.drawItemDrops(this.items); // Item System (Team CS)
-			// HUD must stay still: remove shake offset.
-			drawManager.setWorldOffset(0, 0);
-		}
+		// Ship, enemies, bullets and falling coins are hidden while
+		// paused, so the pause menu isn't cluttered by the frozen
+		// battlefield behind it - only the top HUD stays visible.
+		if (!this.paused)
+			drawBattlefield();
 
 		// Points popups (above the dim, under the HUD). AUTHORED BY: VFX TEAM (Effection)
 		drawManager.drawPointsEffect(this, this.pointsEffect);
 
+		drawHud();
+
+		if (this.paused)
+			drawPauseOverlay();
+		if (!this.paused && stageIntroActive())
+			drawStageIntroOverlay();
+		drawGameOverLayer();
+
+		// Draw the notification after every gameplay and HUD element.
+		if (this.unlockedAchievement != null)
+			drawManager.drawAchievementUnlocked(this, this.unlockedAchievement,
+					System.currentTimeMillis() - this.achievementPopupStartedAt,
+					ACHIEVEMENT_POPUP_INTERVAL, ACHIEVEMENT_POPUP_SLIDE_IN,
+					ACHIEVEMENT_POPUP_SLIDE_OUT);
+
+		drawManager.completeDrawing(this);
+	}
+
+	/**
+	 * Draws the game world: everything that shakes with the screen, with
+	 * the damage dim between the fighters and the pickups.
+	 */
+	private void drawBattlefield() {
+		// Screen shake: move game world only. AUTHORED BY: VFX TEAM (Effection)
+		this.screenShake.update();
+		drawManager.setWorldOffset(this.screenShake.getOffsetX(),
+				this.screenShake.getOffsetY());
+
+		drawPlayerShip();
+		drawEnemies();
+
+		// Hit sparkles move with the game world.
+		drawManager.drawParticles(this, this.particles,
+				SEPARATION_LINE_HEIGHT);
+		drawManager.drawLightningChain(this.lightningChain);
+
+		drawBullets();
+		// Stop shake offset before full-screen dim.
+		drawManager.setWorldOffset(0, 0);
+		// Damage dim (under HUD, so score/lives stay bright). AUTHORED BY: VFX TEAM (Effection)
+		drawManager.drawDamageDim(this, this.damageDim);
+
+		// Coins are part of the game world, so they shake too.
+		drawManager.setWorldOffset(this.screenShake.getOffsetX(),
+				this.screenShake.getOffsetY());
+		for (Coin coin : this.coins)
+			drawManager.drawCoin(coin, coin.getPositionX(),
+					coin.getPositionY());
+		this.meteors.draw(drawManager); // VFX TEAM (Effection): draws the meteor and its diamonds
+		drawManager.drawItemDrops(this.items); // Item System (Team CS)
+		// HUD must stay still: remove shake offset.
+		drawManager.setWorldOffset(0, 0);
+	}
+
+	/** Draws the player ship with its trail, warp and shield effects. */
+	private void drawPlayerShip() {
+		// Warp In draws the ship itself while it beams in. AUTHORED BY: VFX TEAM (Effection)
+		boolean warping = this.warpIn != null
+				&& this.warpIn.update(this.ship, this.lives > 0);
+		drawGhostTrail(warping);
+		if (!warping)
+			drawShipBody();
+		drawManager.drawWarpIn(this.warpIn, this.ship,
+				this.skin.colorAt(System.currentTimeMillis()),
+				SEPARATION_LINE_HEIGHT);
+		if (this.warpIn != null && this.warpIn.takeImpact())
+			this.screenShake.trigger();
+		drawManager.drawItemShield(this.ship, this.items); // Item System (Team CS)
+	}
+
+	/**
+	 * Ghost Trail behind the ship, gone once the level ends (game over or
+	 * level clear). AUTHORED BY: VFX TEAM (Effection)
+	 *
+	 * @param warping
+	 *            Whether the ship is still beaming in.
+	 */
+	private void drawGhostTrail(final boolean warping) {
+		if (this.ghostTrail == null)
+			return;
+		if (this.levelFinished || warping)
+			this.ghostTrail.clear();
+		else
+			this.ghostTrail.draw(drawManager, this.ship,
+					this.skin.colorAt(System.currentTimeMillis()),
+					engine.GhostTrail.isBoosting(this.items));
+	}
+
+	/** Draws the ship itself, blinking after a hit that left lives. */
+	private void drawShipBody() {
+		if (this.ship.isDestroyed() && this.lives > 0) {
+			// A hit that was not the last life: the ship blinks
+			// instead of showing the wreck, since it comes back.
+			if (RespawnBlink.isVisible(System.currentTimeMillis()
+					- this.shipHitAt))
+				drawManager.drawSprite(this.ship.getIdleSprite(),
+						this.ship.getPositionX(),
+						this.ship.getPositionY(), this.ship.getColor());
+		} else
+			drawManager.drawEntity(this.ship, this.ship.getPositionX(),
+					this.ship.getPositionY());
+	}
+
+	/** Draws the bonus ship and the boss or the formation. */
+	private void drawEnemies() {
+		if (this.enemyShipSpecial != null)
+			drawManager.drawEntity(this.enemyShipSpecial,
+					this.enemyShipSpecial.getPositionX(),
+					this.enemyShipSpecial.getPositionY());
+
+		if (this.midBoss != null) {
+			if (this.midBoss.isVisible())
+				drawManager.drawEntity((Entity) this.midBoss,
+						this.midBoss.getPositionX(), this.midBoss.getPositionY());
+			this.midBoss.drawWarnings(drawManager);
+		} else {
+			this.enemyShipFormation.draw();
+		}
+	}
+
+	/** Draws every bullet, with a comet trail on the player's. */
+	private void drawBullets() {
+		for (Bullet bullet : this.bullets) {
+			// Comet trail, player bullets only. AUTHORED BY: VFX TEAM (Effection)
+			if (this.cometTrailOn && bullet.getSpeed() < 0)
+				drawManager.drawBulletTrail(bullet);
+			drawManager.drawEntity(bullet, bullet.getPositionX(),
+					bullet.getPositionY());
+		}
+	}
+
+	/** Draws the top bar and the overlays that belong to it. */
+	private void drawHud() {
 		// Interface.
 		long hudNow = this.paused ? this.pauseStartedAt
 				: System.currentTimeMillis();
@@ -1083,44 +1140,38 @@ public class GameScreen extends Screen {
 		// Low-health glitch (covers game + HUD). AUTHORED BY: VFX TEAM (Effection)
 		this.glitch.setEnabled(this.lowHealthActive && !this.levelFinished);
 		drawManager.drawGlitch(this, this.glitch);
+	}
 
-		if (this.paused) {
-			String[] options = { PauseOption.RESUME.getLabel(),
-					PauseOption.RESTART.getLabel(),
-					PauseOption.QUIT.getLabel() };
-			drawManager.drawPauseMenu(this, options,
-					this.pauseSelection.ordinal());
-			drawManager.drawKeyHints(this,
-					"w+s/arrows move, space select, p resume");
-		}
+	/** Draws the pause menu and its key hint. */
+	private void drawPauseOverlay() {
+		String[] options = { PauseOption.RESUME.getLabel(),
+				PauseOption.RESTART.getLabel(),
+				PauseOption.QUIT.getLabel() };
+		drawManager.drawPauseMenu(this, options,
+				this.pauseSelection.ordinal());
+		drawManager.drawKeyHints(this,
+				"w+s/arrows move, space select, p resume");
+	}
 
-		if (!this.paused && stageIntroActive()) {
-			drawManager.drawStageIntro(this, this.level, this.bonusLife);
-			drawManager.drawHorizontalLine(this, this.height / 2 - this.height
-					/ 12);
-			drawManager.drawHorizontalLine(this, this.height / 2 + this.height
-					/ 12);
-			drawManager.drawItemHint(this, this.items); // Item System (Team CS)
-			drawManager.drawKeyHints(this, "p pause");
-		}
+	/** Draws the stage banner shown while a level starts. */
+	private void drawStageIntroOverlay() {
+		drawManager.drawStageIntro(this, this.level, this.bonusLife);
+		drawManager.drawHorizontalLine(this, this.height / 2 - this.height
+				/ 12);
+		drawManager.drawHorizontalLine(this, this.height / 2 + this.height
+				/ 12);
+		drawManager.drawItemHint(this, this.items); // Item System (Team CS)
+		drawManager.drawKeyHints(this, "p pause");
+	}
 
-
-		// Game over animation. AUTHORED BY: VFX TEAM (Effection)
+	/** Game over animation. AUTHORED BY: VFX TEAM (Effection) */
+	private void drawGameOverLayer() {
 		if (this.shrinkingEnemies != null)
 			drawShrinkingEnemies();
 		if (this.showGameOverText)
 			drawGameOverSequence();
 		if (this.gameOverActive && !this.paused)
 			drawManager.drawKeyHints(this, "space skip to results");
-
-		// Draw the notification after every gameplay and HUD element.
-		if (this.unlockedAchievement != null)
-			drawManager.drawAchievementUnlocked(this, this.unlockedAchievement,
-					System.currentTimeMillis() - this.achievementPopupStartedAt,
-					ACHIEVEMENT_POPUP_INTERVAL, ACHIEVEMENT_POPUP_SLIDE_IN,
-					ACHIEVEMENT_POPUP_SLIDE_OUT);
-
-		drawManager.completeDrawing(this);
 	}
 
 	/**
