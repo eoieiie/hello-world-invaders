@@ -7,6 +7,31 @@
 
 This IC-PBL course project extends and improves the Java [Space Invaders](https://en.wikipedia.org/wiki/Space_Invaders) clone from [RobertoIA/Invaders](https://github.com/RobertoIA/Invaders). Students apply software engineering practices through requirements engineering, team development, code review, and pull-request-based integration into a shared codebase.
 
+## Play the game
+
+Install Java 17 or newer, download `Invaders.jar` from the [GitHub releases](https://github.com/eoieiie/hello-world-invaders/releases), and run the following from the folder that contains it.
+
+```sh
+java -jar Invaders.jar
+```
+
+Save files are created next to the JAR. Keep that folder when upgrading so that high scores, achievements, currency, and settings carry over. Use a separate folder to start with fresh save data. The JAR includes the Silkscreen font.
+
+| Screen | Controls |
+| --- | --- |
+| Main menu | Up/Down or W/S to browse, Space or Enter to select |
+| Gameplay | Arrow keys or WASD to move, Space to fire, 1–3 to use stored items, P to pause or resume |
+| Game over and run summary | Press Space to skip the game-over animation. On the summary, Space reveals unfinished totals, and a later press starts a new run. Esc returns to the menu. |
+| Achievements | Left/Right to change page, Up/Down to browse, F to toggle locked-only view, Esc to return |
+
+Team Hello World developed the main menu and screen navigation in the first half. Second-half changes include persistent sound settings, achievement filtering, the animated run summary, and shorter transitions between stages. [Release notes](https://github.com/eoieiie/hello-world-invaders/wiki/Release-Notes)
+
+## Project handoff
+
+- [Sprint 3 baseline `v0.3.0`](https://github.com/eoieiie/hello-world-invaders/releases/tag/v0.3.0) is the fixed build for the before measurements. Each snapshot includes the source commit and a SHA-256 checksum.
+- [Test Records](https://github.com/eoieiie/hello-world-invaders/wiki/Test-Records), [Quality Metrics](https://github.com/eoieiie/hello-world-invaders/wiki/Quality-Metrics), and [Decision Log](https://github.com/eoieiie/hello-world-invaders/wiki/Decision-Log) record the checks, measurement method, and team decisions.
+- The team tracks sprint work and merges against Jira items. [Jira board](https://helloworld-invaders.atlassian.net/jira/software/projects/HW/boards/1) · [Working Agreement](https://github.com/eoieiie/hello-world-invaders/wiki/Working-Agreement)
+
 ## Team Registration and Project Requirements
 
 Register your team by adding one row to the table below and submitting the change through a pull request.
@@ -29,7 +54,7 @@ Register your team by adding one row to the table below and submitting the chang
 |   8 | [Team CS](https://github.com/doha1208/Invaders-SDP-23621) | [SonDongYeol](https://github.com/playlistSDY), [HanJaeHyuk](https://github.com/doha1208), [Choseonggil](https://github.com/ancho040220), [Choi Jian](https://github.com/choichoi10), [Kim JiHo](https://github.com/GTMBB), [KimHyunChan](https://github.com/whitson1117), [ChoiJiMin](https://github.com/zPHf25N), [KimHanGyeol](https://github.com/han31415920512) | [Item System](teams/team-cs.md) |
 |   9 | [Hello World](https://github.com/eoieiie/Invaders-SDP-23621) | [Byeongjoo Hwang](https://github.com/eoieiie), [Junwoo Kang](https://github.com/oofrog), [Yongtae Kim](https://github.com/kyle891204), [Jaeone Park](https://github.com/kyobak), [Taehyun Bak](https://github.com/nuyh-99), [Myeongho Song](https://github.com/SongMyeongHo), [Changyong Woo](https://github.com/samryong), [Hyeokjun Lee](https://github.com/Aninnom), [Junhyeok Han](https://github.com/junh000) | [Main Menu](teams/HelloWorld.md) |
 
-## Screenshots
+## Upstream screenshots
 
 | Title Screen | Game Screen | Score Screen |
 | :---: | :---: | :---: |
@@ -37,12 +62,16 @@ Register your team by adding one row to the table below and submitting the chang
 
 ## Development
 
-- Recommended IDE: IntelliJ IDEA
-- Runtime requirement inherited from the upstream project: Java 7 or later
-- Before implementing a feature, build and run the baseline game and analyze the relevant source code.
+Use JDK 17 for development. The Gradle wrapper builds the project and runs the JUnit suite.
+
+```powershell
+.\gradlew.bat build
+```
+
+On macOS or Linux, run `./gradlew build`. The JaCoCo HTML report is under `build/reports/jacoco/test/html/`. GitHub Actions runs the build, unit tests and startup smoke check. [Actions](https://github.com/eoieiie/hello-world-invaders/actions)
 
 ## Attribution and Licensing
 
 This course project is based on [RobertoIA/Invaders](https://github.com/RobertoIA/Invaders). The upstream repository does not currently declare an open-source license. This repository therefore does not assert a new open-source license over the upstream code or third-party assets. Any permission or licensing terms confirmed by the relevant rights holders should be documented here before redistribution beyond the permissions provided through GitHub.
 
-The upstream README references the Space Invaders Regular font by kylemaoin. Verify the font and other asset licenses separately before bundling or redistributing them.
+The game bundles Silkscreen under the SIL Open Font License. See [the bundled license](res/silkscreen/OFL.txt).
