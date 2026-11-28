@@ -543,6 +543,30 @@ public class GameScreen extends Screen {
 	 */
 	protected final void update() {
 		super.update();
+		applyShipBonuses();
+		handlePauseKey();
+
+		if (this.paused) {
+			updatePauseMenu();
+			draw();
+			return;
+		}
+
+		if (!stageIntroActive() && !this.levelFinished)
+			updateGameplay();
+		updateWorld();
+		draw();
+
+		if (updateGameOver())
+			return;
+		finishLevelWhenOver();
+		closeScreenWhenDone();
+	}
+
+	/**
+	 * Applies what changes the ship before anything reads it this frame.
+	 */
+	private void applyShipBonuses() {
 		// Item System (Team CS): item bonuses on top of the base fire rate,
 		// bullet speed and movement speed (stacks and the boost item).
 		this.ship.setItemBonuses(
@@ -551,111 +575,151 @@ public class GameScreen extends Screen {
 				this.items.movementSpeedBonus(this.ship.getBaseSpeed()));
 		// Animated skins (GoG); plain skins return the same colour.
 		this.ship.setSkinColor(this.skin.colorAt(System.currentTimeMillis()));
+	}
 
-		if (inputManager.isKeyDown(KeyEvent.VK_P)
-				&& this.pauseKeyCooldown.checkFinished()) {
-			if (this.paused)
-				resumeGameplay();
-			else {
-				this.paused = true;
-				this.pauseStartedAt = System.currentTimeMillis();
-				// Space held to fire must not confirm "Resume" at once.
-				this.pauseConfirmGate.close();
-				this.pauseSelectionCooldown.reset();
-			}
-			this.pauseKeyCooldown.reset();
-			// Ghost Trail starts fresh after a pause. AUTHORED BY: VFX TEAM (Effection)
-			if (this.ghostTrail != null)
-				this.ghostTrail.clear();
-			this.pauseSelection = PauseOption.RESUME;
-			this.logger.info(this.paused ? "Game paused" : "Game resumed");
-		}
-
-		if (this.paused) {
-			updatePauseMenu();
-			draw();
+	/**
+	 * Pauses or resumes when P is pressed. Holding P toggles once.
+	 */
+	private void handlePauseKey() {
+		if (!inputManager.isKeyDown(KeyEvent.VK_P)
+				|| !this.pauseKeyCooldown.checkFinished())
 			return;
+
+		if (this.paused)
+			resumeGameplay();
+		else
+			pauseGameplay();
+		this.pauseKeyCooldown.reset();
+		// Ghost Trail starts fresh after a pause. AUTHORED BY: VFX TEAM (Effection)
+		if (this.ghostTrail != null)
+			this.ghostTrail.clear();
+		this.pauseSelection = PauseOption.RESUME;
+		this.logger.info(this.paused ? "Game paused" : "Game resumed");
+	}
+
+	/** Stops gameplay and opens the pause menu. */
+	private void pauseGameplay() {
+		this.paused = true;
+		this.pauseStartedAt = System.currentTimeMillis();
+		// Space held to fire must not confirm "Resume" at once.
+		this.pauseConfirmGate.close();
+		this.pauseSelectionCooldown.reset();
+	}
+
+	/**
+	 * One frame of play: the player, the bonus ship and the enemies. Runs
+	 * only after the stage intro and before the level is finished.
+	 */
+	private void updateGameplay() {
+		if (!this.ship.isDestroyed())
+			handlePlayerInput();
+
+		moveSpecialShip();
+		spawnOrRemoveSpecialShip();
+
+		this.ship.update();
+		updateEnemies();
+		updateLowHealthEffect();
+		this.ship.setBlinking(this.lowHealthActive);
+	}
+
+	/** Reads the movement, fire and item keys. */
+	private void handlePlayerInput() {
+		moveShipSideways();
+		moveShipInBand();
+		if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+			// Count bullets, not trigger pulls: Two Way fires two at
+			// once, and accuracy is kills per bullet.
+			int bulletsBefore = this.bullets.size();
+			if (this.ship.shoot(this.bullets))
+				this.bulletsShot += this.bullets.size() - bulletsBefore;
 		}
+		useItemSlots(); // Item System (Team CS)
+	}
 
-		if (!stageIntroActive() && !this.levelFinished) {
+	/** Left and right, stopping at the screen borders. */
+	private void moveShipSideways() {
+		boolean moveRight = inputManager.isKeyDown(KeyEvent.VK_RIGHT)
+				|| inputManager.isKeyDown(KeyEvent.VK_D);
+		boolean moveLeft = inputManager.isKeyDown(KeyEvent.VK_LEFT)
+				|| inputManager.isKeyDown(KeyEvent.VK_A);
 
-			if (!this.ship.isDestroyed()) {
-				boolean moveRight = inputManager.isKeyDown(KeyEvent.VK_RIGHT)
-						|| inputManager.isKeyDown(KeyEvent.VK_D);
-				boolean moveLeft = inputManager.isKeyDown(KeyEvent.VK_LEFT)
-						|| inputManager.isKeyDown(KeyEvent.VK_A);
+		boolean isRightBorder = this.ship.getPositionX()
+				+ this.ship.getWidth() + this.ship.getSpeed() > this.width - 1;
+		boolean isLeftBorder = this.ship.getPositionX()
+				- this.ship.getSpeed() < 1;
 
-				boolean isRightBorder = this.ship.getPositionX()
-						+ this.ship.getWidth() + this.ship.getSpeed() > this.width - 1;
-				boolean isLeftBorder = this.ship.getPositionX()
-						- this.ship.getSpeed() < 1;
-
-				if (moveRight && !isRightBorder) {
-					this.ship.moveRight();
-				}
-				if (moveLeft && !isLeftBorder) {
-					this.ship.moveLeft();
-				}
-
-				// Up and down, only inside the bottom band (HW-105).
-				boolean moveUp = inputManager.isKeyDown(KeyEvent.VK_UP)
-						|| inputManager.isKeyDown(KeyEvent.VK_W);
-				boolean moveDown = inputManager.isKeyDown(KeyEvent.VK_DOWN)
-						|| inputManager.isKeyDown(KeyEvent.VK_S);
-				if (moveUp && !moveDown) {
-					this.ship.moveUp();
-				} else if (moveDown && !moveUp) {
-					this.ship.moveDown();
-				}
-				if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
-					// Count bullets, not trigger pulls: Two Way fires two at
-					// once, and accuracy is kills per bullet.
-					int bulletsBefore = this.bullets.size();
-					if (this.ship.shoot(this.bullets))
-						this.bulletsShot += this.bullets.size() - bulletsBefore;
-				}
-				useItemSlots(); // Item System (Team CS)
-			}
-
-			if (this.enemyShipSpecial != null) {
-				if (!this.enemyShipSpecial.isDestroyed())
-					this.enemyShipSpecial.move(this.items.enemiesFrozen() ? 0 : 2, 0);
-				else if (this.enemyShipSpecialExplosionCooldown.checkFinished())
-					this.enemyShipSpecial = null;
-
-			}
-			if (this.enemyShipSpecial == null
-					&& this.enemyShipSpecialCooldown.checkFinished()) {
-				this.enemyShipSpecial = new EnemyShip();
-				this.enemyShipSpecialCooldown.reset();
-				this.logger.info("A special ship appears");
-			}
-			if (this.enemyShipSpecial != null
-					&& this.enemyShipSpecial.getPositionX() > this.width) {
-				this.enemyShipSpecial = null;
-				this.logger.info("The special ship has escaped");
-			}
-
-			this.ship.update();
-			if (this.midBoss != null) {
-				if (!this.items.enemiesFrozen()) {
-					this.midBoss.update();
-					this.midBoss.moveBoss(this.width, this.height, this.gameSettings);
-				}
-				this.midBoss.setTarget(
-						this.ship.getPositionX() + this.ship.getWidth() / 2,
-						this.ship.getPositionY() + this.ship.getHeight() / 2);
-				this.midBoss.shoot(this.bullets, this.gameSettings);
-			} else {
-				if (!this.items.enemiesFrozen())
-					this.enemyShipFormation.update();
-				this.enemyShipFormation.shoot(this.bullets);
-				this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
-			}
-			updateLowHealthEffect();
-			this.ship.setBlinking(this.lowHealthActive);
+		if (moveRight && !isRightBorder) {
+			this.ship.moveRight();
 		}
+		if (moveLeft && !isLeftBorder) {
+			this.ship.moveLeft();
+		}
+	}
 
+	/** Up and down, only inside the bottom band (HW-105). */
+	private void moveShipInBand() {
+		boolean moveUp = inputManager.isKeyDown(KeyEvent.VK_UP)
+				|| inputManager.isKeyDown(KeyEvent.VK_W);
+		boolean moveDown = inputManager.isKeyDown(KeyEvent.VK_DOWN)
+				|| inputManager.isKeyDown(KeyEvent.VK_S);
+		if (moveUp && !moveDown) {
+			this.ship.moveUp();
+		} else if (moveDown && !moveUp) {
+			this.ship.moveDown();
+		}
+	}
+
+	/** Moves the bonus ship, or removes it once its explosion is over. */
+	private void moveSpecialShip() {
+		if (this.enemyShipSpecial == null)
+			return;
+		if (!this.enemyShipSpecial.isDestroyed())
+			this.enemyShipSpecial.move(this.items.enemiesFrozen() ? 0 : 2, 0);
+		else if (this.enemyShipSpecialExplosionCooldown.checkFinished())
+			this.enemyShipSpecial = null;
+	}
+
+	/** Sends in a bonus ship when it is due, and drops one that got away. */
+	private void spawnOrRemoveSpecialShip() {
+		if (this.enemyShipSpecial == null
+				&& this.enemyShipSpecialCooldown.checkFinished()) {
+			this.enemyShipSpecial = new EnemyShip();
+			this.enemyShipSpecialCooldown.reset();
+			this.logger.info("A special ship appears");
+		}
+		if (this.enemyShipSpecial != null
+				&& this.enemyShipSpecial.getPositionX() > this.width) {
+			this.enemyShipSpecial = null;
+			this.logger.info("The special ship has escaped");
+		}
+	}
+
+	/** Moves and fires the boss, or the formation on a normal stage. */
+	private void updateEnemies() {
+		if (this.midBoss != null) {
+			if (!this.items.enemiesFrozen()) {
+				this.midBoss.update();
+				this.midBoss.moveBoss(this.width, this.height, this.gameSettings);
+			}
+			this.midBoss.setTarget(
+					this.ship.getPositionX() + this.ship.getWidth() / 2,
+					this.ship.getPositionY() + this.ship.getHeight() / 2);
+			this.midBoss.shoot(this.bullets, this.gameSettings);
+		} else {
+			if (!this.items.enemiesFrozen())
+				this.enemyShipFormation.update();
+			this.enemyShipFormation.shoot(this.bullets);
+			this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
+		}
+	}
+
+	/**
+	 * Everything that keeps moving every unpaused frame, the stage intro
+	 * and the end of the level included: items, collisions, bullets,
+	 * particles, coins, meteors and popups.
+	 */
+	private void updateWorld() {
 		// Item System (Team CS): drops fall/expire, pickups, effect timers.
 		this.items.update(this.ship, !stageIntroActive()
 				&& !this.levelFinished && this.lives > 0
@@ -669,21 +733,34 @@ public class GameScreen extends Screen {
 		this.pendingDiamonds += this.meteors.update(this.ship, this.lives > 0); // VFX TEAM (Effection): updates the meteor and its diamonds, returns the diamonds to be added to pending
 		handleItemEvents();
 		updateAchievementPopup();
-		draw();
+	}
 
-		// Game over sequence, only when the player runs out of lives. AUTHORED BY: VFX TEAM (Effection)
+	/**
+	 * Starts the game over sequence when the player runs out of lives and
+	 * keeps it going. AUTHORED BY: VFX TEAM (Effection)
+	 *
+	 * @return True while the sequence owns the rest of the frame.
+	 */
+	private boolean updateGameOver() {
 		if (this.lives == 0 && !this.levelFinished)
 			startGameOverSequence();
-		if (this.gameOverActive) {
-			if (this.gameOverSkipGate.accept(inputManager.isKeyDown(KeyEvent.VK_SPACE))) {
-				this.logger.info("Skipping game over animation.");
-				this.isRunning = false;
-			} else {
-				updateGameOverSequence();
-			}
-			return;
-		}
+		if (!this.gameOverActive)
+			return false;
 
+		if (this.gameOverSkipGate.accept(inputManager.isKeyDown(KeyEvent.VK_SPACE))) {
+			this.logger.info("Skipping game over animation.");
+			this.isRunning = false;
+		} else {
+			updateGameOverSequence();
+		}
+		return true;
+	}
+
+	/**
+	 * Marks the level finished the first frame it is cleared or lost, and
+	 * rewards a clear the player survived.
+	 */
+	private void finishLevelWhenOver() {
 		boolean isCleared = this.midBoss != null
 				? this.midBoss.isDestroyed() : this.enemyShipFormation.isEmpty();
 		if ((isCleared || this.lives == 0)
@@ -691,51 +768,78 @@ public class GameScreen extends Screen {
 			this.levelFinished = true;
 			this.screenFinishedCooldown.reset();
 
-			// Level cleared alive: level N is worth N diamonds, kept pending
-			// until cashed out (see engine.DiamondManager), and coins still
-			// falling are collected so the last kills' drops aren't lost.
-			if (isCleared && this.lives > 0) {
-				this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
-				SoundManager.getInstance().stopBgm();
-				SoundManager.getInstance().playSfx(Sound.VICTORY);
-				if (!this.practiceMode) {
-					this.pendingDiamonds += this.level;
-				} else {
-					if (this.level == 5) {
-						this.pendingDiamonds += BOSS_PRACTICE_LEVEL_5_DIAMONDS;
-					} else if (this.level == 10) {
-						this.pendingDiamonds += BOSS_PRACTICE_LEVEL_10_DIAMONDS;
-					}
-				}
-				collectRemainingCoins();
-				this.items.collectRemainingDrops(); // HW-130: items still falling are collected too
-				this.pendingDiamonds += this.meteors.collectRemaining(); // VFX TEAM (Effection): collects remaining diamonds from the meteor and adds them to pending
-				showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
-				if (!this.practiceMode) {
-					showUnlockedAchievements(Core.getAchievementManager()
-							.recordFlawlessLevelCompleted(this.tookDamage));
-					showUnlockedAchievement(Core.getAchievementManager()
-							.recordLevelCompleted(this.level));
-
-					showUnlockedAchievement(Core.getAchievementManager()
-							.recordLevelCompleted(
-									this.level,
-									Core.getShipId(this.ship.getType()),
-									true));
-					
-					// Last level cleared alive: the game is beaten.
-					if (this.level == Core.getNumLevels())
-						showUnlockedAchievement(Core.getAchievementManager()
-								.recordGameWon(Core.getSelectedShipId()));
-				}
-			}
+			if (isCleared && this.lives > 0)
+				rewardLevelClear();
 		}
+	}
 
+	/**
+	 * Level cleared alive: level N is worth N diamonds, kept pending
+	 * until cashed out (see engine.DiamondManager), and coins still
+	 * falling are collected so the last kills' drops aren't lost.
+	 */
+	private void rewardLevelClear() {
+		this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
+		SoundManager.getInstance().stopBgm();
+		SoundManager.getInstance().playSfx(Sound.VICTORY);
+		this.pendingDiamonds += levelClearDiamonds(this.level, this.practiceMode);
+		collectRemainingCoins();
+		this.items.collectRemainingDrops(); // HW-130: items still falling are collected too
+		this.pendingDiamonds += this.meteors.collectRemaining(); // VFX TEAM (Effection): collects remaining diamonds from the meteor and adds them to pending
+		showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
+		if (!this.practiceMode)
+			recordLevelClearAchievements();
+	}
+
+	/**
+	 * Diamonds for clearing a level alive. Normal play pays the level
+	 * number. Boss practice pays a fixed amount for the two boss levels
+	 * and nothing for any other level.
+	 *
+	 * @param level
+	 *            Level that was cleared.
+	 * @param practiceMode
+	 *            Whether this is a standalone boss challenge.
+	 * @return Diamonds to add to the pending total.
+	 */
+	static int levelClearDiamonds(final int level, final boolean practiceMode) {
+		if (!practiceMode)
+			return level;
+		if (level == 5)
+			return BOSS_PRACTICE_LEVEL_5_DIAMONDS;
+		if (level == 10)
+			return BOSS_PRACTICE_LEVEL_10_DIAMONDS;
+		return 0;
+	}
+
+	/** Achievements of a normal-play clear. Boss practice records none. */
+	private void recordLevelClearAchievements() {
+		showUnlockedAchievements(Core.getAchievementManager()
+				.recordFlawlessLevelCompleted(this.tookDamage));
+		showUnlockedAchievement(Core.getAchievementManager()
+				.recordLevelCompleted(this.level));
+
+		showUnlockedAchievement(Core.getAchievementManager()
+				.recordLevelCompleted(
+						this.level,
+						Core.getShipId(this.ship.getType()),
+						true));
+
+		// Last level cleared alive: the game is beaten.
+		if (this.level == Core.getNumLevels())
+			showUnlockedAchievement(Core.getAchievementManager()
+					.recordGameWon(Core.getSelectedShipId()));
+	}
+
+	/**
+	 * Ends the screen after the finish delay, once no achievement popup is
+	 * showing or waiting.
+	 */
+	private void closeScreenWhenDone() {
 		if (this.levelFinished && this.screenFinishedCooldown.checkFinished()
 				&& this.unlockedAchievement == null
 				&& this.achievementPopupQueue.isEmpty())
 			this.isRunning = false;
-
 	}
 
 	/**
